@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>包装工程 スキルチェック閲覧</title>
+<style>
+  :root{
+    --navy:#1F3864;
+    --navy-2:#2E4C82;
+    --bg:#F3F4F7;
+    --card:#FFFFFF;
+    --amber:#D98E2B;
+    --green:#2F8F5B;
+    --text:#1C2430;
+    --text-muted:#6B7280;
+    --border:#E1E4EA;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  .num{font-family:"DejaVu Sans Mono","SF Mono",monospace;}
+
+  header.top{
+    position:sticky;top:0;z-index:50;background:var(--navy);color:#fff;
+    padding:14px 16px 12px;box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  header.top h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em;}
+  header.top .sub{font-size:11px;opacity:.75;margin-top:2px;}
+
+  main{max-width:520px;margin:0 auto;padding:14px 12px 40px;}
+  #detailPane{display:none;}
+  #mainArea.detail-active #listPane{display:none;}
+  #mainArea.detail-active #detailPane{display:block;}
+
+  @media (min-width: 860px){
+    main#mainArea{max-width:960px;display:flex;align-items:flex-start;gap:16px;}
+    #mainArea #listPane{display:block !important;width:340px;flex:none;position:sticky;top:14px;
+      max-height:calc(100vh - 28px);overflow-y:auto;}
+    #mainArea #detailPane{display:block !important;flex:1;min-width:0;}
+    .v-table-wrap{overflow-x:auto;}
+    main#mainArea.compare-full{max-width:none;}
+    #mainArea.compare-full #listPane{display:none !important;}
+    #mainArea.compare-full #detailPane{max-width:1400px;margin:0 auto;}
+  }
+
+  @media print{
+    @page{ size: A4; margin: 10mm; }
+    #lockScreen, header.top, #listPane, .backbar, .v-pdf-btn, .v-radar-legend{display:none !important;}
+    #mainArea, #detailPane{display:block !important;max-width:none !important;margin:0 !important;padding:0 !important;}
+    body, #appRoot{background:#fff;}
+    .card{border:none;box-shadow:none;border-radius:0;padding:4px 0;margin-bottom:4px;
+      page-break-inside:avoid;}
+    .card h2{font-size:11px;margin:0 0 4px;}
+    .detail-hd .n{font-size:14px;}
+    .detail-hd .meta{font-size:9px;}
+    .v-cmp-head h2{font-size:12px;}
+
+    /* レーダーチャートを小さく */
+    .card svg{max-width:170px !important;}
+
+    /* 表を詰めて2ページ以内に収める */
+    .v-table-wrap{overflow:visible;border:none;}
+    table.v-table{font-size:7.5px;}
+    table.v-table thead th{background:#1F3864 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+      padding:3px 4px;font-size:7px;}
+    table.v-table td{padding:2px 4px;line-height:1.25;}
+    table.v-table tr.v-group-row td{padding:2px 5px;font-size:7.5px;}
+    .v-lv-badge, .sd-badge{padding:0;font-size:7.5px;}
+    table.v-cmp-table{font-size:8px;}
+    table.v-cmp-table th, table.v-cmp-table td{padding:3px 5px;}
+
+    table.v-table, table.v-cmp-table{page-break-inside:auto;}
+    table.v-table tr, table.v-cmp-table tr{page-break-inside:avoid;}
+    thead{display:table-header-group;}
+  }
+
+
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
+    padding:14px;margin-bottom:12px;}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--navy);font-weight:700;}
+
+  #lockScreen{
+    position:fixed;inset:0;z-index:200;background:var(--navy);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #lockScreen .box{background:#fff;border-radius:16px;padding:26px 22px;max-width:320px;width:100%;
+    box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  #lockScreen h2{margin:0 0 6px;font-size:16px;color:var(--navy);}
+  #lockScreen p{margin:0 0 16px;font-size:12.5px;color:var(--text-muted);}
+  #lockScreen input{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:16px;text-align:center;letter-spacing:.05em;margin-bottom:10px;}
+  #lockScreen button{width:100%;padding:12px;border:none;border-radius:10px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:14.5px;cursor:pointer;}
+  #lockScreen .err{color:#C0392B;font-size:12px;margin-top:8px;display:none;}
+  #appRoot{display:block;}
+
+  .setup-note{font-size:12px;color:var(--text-muted);line-height:1.6;}
+  .setup-note code{background:#EEF1F6;padding:1px 5px;border-radius:5px;font-size:11px;}
+
+  .loading{text-align:center;padding:40px 0;color:var(--text-muted);font-size:13px;}
+
+  .person-row{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 4px;border-top:1px solid var(--border);cursor:pointer;}
+  .person-row:first-child{border-top:none;}
+  .person-row .n{font-size:14.5px;font-weight:700;}
+  .person-row .d{font-size:11px;color:var(--text-muted);margin-top:2px;}
+  .person-row .avg{font-size:18px;font-weight:700;color:var(--navy);}
+  .person-row .chev{width:8px;height:8px;border-right:2px solid var(--text-muted);
+    border-bottom:2px solid var(--text-muted);transform:rotate(-45deg);margin-left:10px;}
+  .v-select-box{flex:none;width:19px;height:19px;margin-right:10px;accent-color:var(--navy);}
+
+  .backbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;}
+  .backbar .arrow{width:9px;height:9px;border-left:2px solid var(--navy);border-bottom:2px solid var(--navy);
+    transform:rotate(45deg);}
+  .backbar span{font-size:13px;color:var(--navy);font-weight:700;}
+
+  .detail-hd{margin-bottom:10px;}
+  .detail-hd .n{font-size:19px;font-weight:800;color:var(--navy);}
+  .detail-hd .meta{font-size:12px;color:var(--text-muted);margin-top:3px;}
+
+  .group-block{margin-bottom:10px;}
+  .group-title{font-size:12.5px;font-weight:700;color:var(--navy);
+    background:#EEF1F6;padding:7px 10px;border-radius:8px 8px 0 0;}
+  .item-row{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 10px;border-bottom:1px solid var(--border);background:var(--card);font-size:13px;}
+  .item-row:last-child{border-radius:0 0 8px 8px;}
+  .item-row .iname{flex:1;}
+  .item-row .badges{display:flex;align-items:center;gap:6px;flex:none;}
+  .lv-badge{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#fff;}
+  .sd-badge{font-size:10.5px;padding:2px 6px;border-radius:6px;font-weight:600;}
+  .sd-yes{background:var(--green);color:#fff;}
+  .sd-no{background:#EEF1F6;color:var(--text-muted);}
+  .remarks-line{font-size:11.5px;color:var(--text-muted);padding:0 10px 8px;background:var(--card);
+    margin-top:-1px;}
+  .empty-note{font-size:12px;color:var(--text-muted);padding:20px 4px;text-align:center;}
+  .v-search-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:15px;background:#FAFBFC;color:var(--text);box-sizing:border-box;}
+  .v-search-input:focus{outline:2px solid var(--navy-2);outline-offset:1px;}
+  .v-compare-btn{width:100%;margin-top:8px;padding:9px 0;border:1.5px solid var(--navy);border-radius:9px;
+    background:#EEF1F6;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer;}
+  .v-compare-btn:active{background:#E3E7EE;}
+  .v-header-settings-btn{margin-top:10px;padding:6px 10px;border:1px solid rgba(255,255,255,.4);
+    border-radius:8px;background:rgba(255,255,255,.12);color:#fff;font-size:11.5px;cursor:pointer;}
+  .v-settings-card{margin:12px 12px 0;max-width:496px;margin-left:auto;margin-right:auto;}
+  .v-admin-link{width:100%;background:none;border:none;padding:4px 0;font-size:12.5px;
+    color:var(--text-muted);text-align:left;cursor:pointer;}
+  .v-admin-msg{font-size:12px;margin-top:8px;min-height:16px;}
+  .v-admin-msg.ok{color:var(--green);}
+  .v-admin-msg.err{color:#C0392B;}
+  .v-pdf-btn{flex:none;padding:8px 14px;border:1.5px solid var(--navy);border-radius:9px;
+    background:#fff;color:var(--navy);font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;}
+  .v-pdf-btn:active{background:#EEF1F6;}
+  table.v-table.v-cmp-table{table-layout:auto;}
+  table.v-cmp-table th, table.v-cmp-table td{white-space:nowrap;padding:7px 10px;}
+  .v-cmp-name{font-weight:700;color:var(--text);position:sticky;left:0;background:var(--card);}
+  .v-cmp-total{font-weight:800;color:var(--navy);background:#F7F9FC;}
+  .v-cmp-cell{color:var(--text-muted);}
+  .v-cmp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    flex-wrap:wrap;margin-bottom:10px;}
+  .v-cmp-head h2{margin:0;}
+  .v-table-wrap{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;margin-bottom:14px;}
+  table.v-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+  table.v-table thead th{background:var(--navy);color:#fff;padding:8px 6px;font-size:10.5px;
+    text-align:left;font-weight:700;}
+  table.v-table thead th.v-c{text-align:center;}
+  table.v-table col.v-col-no{width:9%;}
+  table.v-table col.v-col-item{width:24%;}
+  table.v-table col.v-col-lv{width:10%;}
+  table.v-table col.v-col-sd{width:14%;}
+  table.v-table col.v-col-bar{width:18%;}
+  table.v-table col.v-col-remarks{width:25%;}
+  table.v-table td{padding:7px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.v-table tr.v-group-row td{background:#EEF1F6;color:var(--navy);font-weight:700;font-size:11.5px;
+    padding:6px 8px;}
+  table.v-table td.v-c{text-align:center;}
+  table.v-table td.v-lv{font-weight:800;}
+  table.v-table td.v-bar{font-family:"DejaVu Sans Mono","SF Mono",monospace;letter-spacing:1px;
+    color:var(--navy);font-size:12px;white-space:nowrap;}
+  table.v-table td.v-remarks{color:var(--text-muted);font-size:11px;max-width:110px;
+    white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.5;}
+
+  .v-radar-legend{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin-top:8px;
+    padding-top:10px;border-top:1px solid var(--border);}
+  .v-radar-legend-row{display:flex;justify-content:space-between;align-items:baseline;
+    padding:3px 2px;font-size:11.5px;}
+  .v-radar-legend-name{color:var(--text-muted);}
+  .v-radar-legend-val{font-weight:700;color:var(--navy);}
+
+  #lockScreen{
+    position:fixed;inset:0;z-index:200;background:var(--navy);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #lockScreen .box{background:#fff;border-radius:16px;padding:26px 22px;max-width:320px;width:100%;
+    box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  #lockScreen h2{margin:0 0 6px;font-size:16px;color:var(--navy);}
+  #lockScreen p{margin:0 0 16px;font-size:12.5px;color:var(--text-muted);}
+  #lockScreen input{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:16px;text-align:center;letter-spacing:.05em;margin-bottom:10px;}
+  #lockScreen button{width:100%;padding:12px;border:none;border-radius:10px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:14.5px;cursor:pointer;}
+  #lockScreen .err{color:#C0392B;font-size:12px;margin-top:8px;display:none;}
+  #appRoot{display:none;}
+</style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <div class="box">
+    <h2>🔒 パスワード</h2>
+    <p>包装工程スキルチェックの提出データを閲覧します。</p>
+    <input type="password" id="pwInput" placeholder="パスワード" inputmode="numeric" autocomplete="off">
+    <button id="pwBtn">開く</button>
+    <div class="err" id="pwErr">パスワードが違います</div>
+  </div>
+</div>
+
+<div id="appRoot">
+<header class="top">
+  <h1>スキルチェック閲覧</h1>
+  <div class="sub">スプレッドシートに保存された提出データを表示します</div>
+  <button id="settingsToggleBtn" class="v-header-settings-btn">⚙️ 接続設定</button>
+</header>
+
+<div id="settingsPanel" class="card v-settings-card" style="display:none;">
+  <label for="webappUrlInput" style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:6px;">Apps ScriptのウェブアプリURL</label>
+  <input type="text" id="webappUrlInput" class="v-search-input" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+  <button id="webappUrlSaveBtn" class="v-compare-btn" style="margin-top:8px;">このURLを保存する</button>
+  <button id="webappUrlResetBtn" class="v-admin-link" style="margin-top:6px;">初期設定のURLに戻す</button>
+  <div id="webappUrlMsg" class="v-admin-msg"></div>
+</div>
+
+<main id="mainArea">
+  <div id="listPane"><div class="loading">読み込み中...</div></div>
+  <div id="detailPane"><div class="card"><div class="empty-note">👈 左の一覧から人を選んでください</div></div></div>
+</main>
+</div>
+
+<script>
+// ここにApps ScriptのウェブアプリURLを貼ってください(保存アプリ側と同じURLでOK)
+const DEFAULT_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyDdvL1weLuyT4vWH4_d4q6fCFL_Bfn9c19fOypw_94YqSgE1iZFxJtan0cpkbu0IDl/exec";
+const WEBAPP_URL_KEY = 'skillcheck_webapp_url';
+let SHEET_WEBAPP_URL = (function(){
+  try{
+    const saved = localStorage.getItem(WEBAPP_URL_KEY);
+    return saved || DEFAULT_SHEET_WEBAPP_URL;
+  }catch(e){ return DEFAULT_SHEET_WEBAPP_URL; }
+})();
+
+let GROUP_ORDER = [
+  "2F新カートナー","旧カートナー","プラスチベース","新ライン","旧ライン",
+  "手作業","選別工程","STP工程","給袋工程","ピロー","PTP工程",
+];
+// ↑ サーバー(スプレッドシートの「設定」シート)から工程一覧を取得できなかった時のための初期値(フォールバック)
+
+async function loadGroupOrderFromServer(){
+  if(!SHEET_WEBAPP_URL) return;
+  try{
+    const res = await fetch(SHEET_WEBAPP_URL + '?action=config', { method: 'GET' });
+    if(!res.ok) return;
+    const data = await res.json();
+    if(data.groups && data.groups.length){
+      GROUP_ORDER = data.groups.map(g=>g.name);
+    }
+  }catch(e){
+    console.error('工程一覧の読み込みエラー', e);
+  }
+}
+
+function lvColor(lv){
+  if(lv === null || lv === undefined || lv === "") return "#C9CDD4";
+  const n = Number(lv);
+  const stops = ["#B0B4BA","#C9C267","#E0C24C","#8FBF6B","#2F8F5B"];
+  return stops[Math.max(0, Math.min(4, n))];
+}
+
+const APP_PASSWORD = "1222";
+(function passwordGate(){
+  const lock = document.getElementById('lockScreen');
+  const root = document.getElementById('appRoot');
+  const input = document.getElementById('pwInput');
+  const btn = document.getElementById('pwBtn');
+  const err = document.getElementById('pwErr');
+
+  function unlock(){
+    lock.style.display = 'none';
+    root.style.display = 'block';
+    loadData();
+  }
+  function tryUnlock(){
+    if(input.value === APP_PASSWORD){ unlock(); }
+    else{ err.style.display = 'block'; input.value=''; input.focus(); }
+  }
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+})();
+
+let PEOPLE = [];
+
+const URL_SETTINGS_PASSWORD = "0602";
+let urlSettingsUnlocked = false;
+
+document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('settingsPanel');
+  if(panel.style.display !== 'none'){
+    panel.style.display = 'none';
+    return;
+  }
+  if(!urlSettingsUnlocked){
+    const pw = prompt('パスワードを入力してください');
+    if(pw === null) return;
+    if(pw !== URL_SETTINGS_PASSWORD){ alert('パスワードが違います'); return; }
+    urlSettingsUnlocked = true;
+  }
+  document.getElementById('webappUrlInput').value = SHEET_WEBAPP_URL;
+  panel.style.display = 'block';
+});
+
+document.getElementById('webappUrlSaveBtn').addEventListener('click', ()=>{
+  const msg = document.getElementById('webappUrlMsg');
+  const url = document.getElementById('webappUrlInput').value.trim();
+  if(!url){ msg.textContent = 'URLを入力してください'; msg.className = 'v-admin-msg err'; return; }
+  if(!url.startsWith('https://script.google.com/')){
+    msg.textContent = 'Google Apps ScriptのURL（https://script.google.com/...で始まるもの）を入力してください';
+    msg.className = 'v-admin-msg err';
+    return;
+  }
+  try{ localStorage.setItem(WEBAPP_URL_KEY, url); }catch(e){}
+  SHEET_WEBAPP_URL = url;
+  msg.textContent = '保存しました。読み込み直します...';
+  msg.className = 'v-admin-msg ok';
+  loadData();
+});
+
+document.getElementById('webappUrlResetBtn').addEventListener('click', ()=>{
+  try{ localStorage.removeItem(WEBAPP_URL_KEY); }catch(e){}
+  SHEET_WEBAPP_URL = DEFAULT_SHEET_WEBAPP_URL;
+  document.getElementById('webappUrlInput').value = SHEET_WEBAPP_URL;
+  const msg = document.getElementById('webappUrlMsg');
+  msg.textContent = 'ファイルに書かれている初期設定のURLに戻しました。読み込み直します...';
+  msg.className = 'v-admin-msg ok';
+  loadData();
+});
+
+async function loadData(){
+  const main = document.getElementById('listPane');
+  if(!SHEET_WEBAPP_URL){
+    main.innerHTML = `
+      <div class="card">
+        <h2>設定が必要です</h2>
+        <div class="setup-note">
+          このファイルの中の<br>
+          <code>const SHEET_WEBAPP_URL = "";</code><br>
+          に、保存アプリ(index.html)と同じApps ScriptのウェブアプリURLを貼り付けてください。
+        </div>
+      </div>`;
+    return;
+  }
+  try{
+    await loadGroupOrderFromServer();
+    const res = await fetch(SHEET_WEBAPP_URL, { method: 'GET' });
+    if(!res.ok){
+      throw new Error('HTTPステータス: ' + res.status);
+    }
+    const text = await res.text();
+    let data;
+    try{
+      data = JSON.parse(text);
+    }catch(parseErr){
+      throw new Error('JSONとして解釈できませんでした。応答内容: ' + text.slice(0, 300));
+    }
+    PEOPLE = data.people || [];
+    renderList();
+  }catch(e){
+    main.innerHTML = `<div class="card"><h2>読み込みに失敗しました</h2>
+      <div class="setup-note" style="margin-top:8px;word-break:break-all;">
+        エラー詳細: ${escapeHtml(e.message || String(e))}
+      </div></div>`;
+    console.error(e);
+    return;
+  }
+}
+
+function latestBlock(rows){
+  // 記録日時が入っている行を境目として、一番最後のブロックだけを取り出す
+  let lastStart = 0;
+  rows.forEach((r, i)=>{ if(r.ts) lastStart = i; });
+  return rows.slice(lastStart);
+}
+
+function avgLv(rows){
+  const vals = rows.filter(r=>r.lv !== null && r.lv !== "").map(r=>Number(r.lv));
+  if(!vals.length) return null;
+  return (vals.reduce((a,b)=>a+b,0) / vals.length).toFixed(2);
+}
+
+let LIST_SEARCH_TERM = '';
+
+function renderList(){
+  document.getElementById('mainArea').classList.remove('detail-active');
+  document.getElementById('mainArea').classList.remove('compare-full');
+  const main = document.getElementById('listPane');
+  if(!PEOPLE.length){
+    main.innerHTML = `<div class="card"><div class="empty-note">まだ提出データがありません</div></div>`;
+    return;
+  }
+
+  // 検索欄はここで一度だけ作る。以後は壊さない(日本語入力の変換が毎回中断されるのを防ぐため)
+  main.innerHTML = `
+    <div class="card" style="margin-bottom:10px;">
+      <input type="text" id="listSearchInput" class="v-search-input" placeholder="🔍 氏名・所属ラインで検索" autocomplete="off">
+      <button id="compareBtn" class="v-compare-btn">📊 全員を比較する</button>
+    </div>
+    <div id="listResults"></div>`;
+
+  document.getElementById('compareBtn').addEventListener('click', renderCompare);
+  updateCompareBtnLabel();
+
+  const searchInput = document.getElementById('listSearchInput');
+  searchInput.value = LIST_SEARCH_TERM;
+  searchInput.addEventListener('input', ()=>{
+    LIST_SEARCH_TERM = searchInput.value;
+    renderListResults();
+  });
+
+  renderListResults();
+}
+
+let SELECTED_PEOPLE = new Set();
+
+function renderListResults(){
+  const resultsEl = document.getElementById('listResults');
+  if(!resultsEl) return;
+
+  const term = LIST_SEARCH_TERM.trim();
+  const filtered = PEOPLE
+    .map((p, idx)=>({p, idx}))
+    .filter(({p})=>{
+      if(!term) return true;
+      const block = latestBlock(p.rows);
+      const line = block[0] ? (block[0].line || '') : '';
+      return p.name.includes(term) || line.includes(term);
+    });
+
+  const rowsHtml = filtered.map(({p, idx})=>{
+    const block = latestBlock(p.rows);
+    const avg = avgLv(block);
+    const date = block[0] && block[0].date ? block[0].date : '';
+    const tenureText = block[0] ? calcTenureText(block[0].hire) : '';
+    const checked = SELECTED_PEOPLE.has(idx) ? 'checked' : '';
+    return `
+      <div class="person-row" data-idx="${idx}">
+        <input type="checkbox" class="v-select-box" data-idx="${idx}" ${checked}>
+        <div style="flex:1;min-width:0;">
+          <div class="n">${p.name}</div>
+          <div class="d">${date || '日付未記入'}${tenureText ? '　'+tenureText : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;">
+          <div class="avg num">${avg === null ? '-' : avg}</div>
+          <div class="chev"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const listBody = filtered.length
+    ? rowsHtml
+    : `<div class="empty-note">「${escapeHtml(term)}」に一致する人がいません</div>`;
+
+  resultsEl.innerHTML = `<div class="card"><h2>提出済み一覧（${filtered.length}${term ? ' / '+PEOPLE.length : ''}人）</h2>${listBody}</div>`;
+
+  resultsEl.querySelectorAll('.v-select-box').forEach(cb=>{
+    cb.addEventListener('click', e=> e.stopPropagation());
+    cb.addEventListener('change', ()=>{
+      const idx = Number(cb.dataset.idx);
+      if(cb.checked) SELECTED_PEOPLE.add(idx); else SELECTED_PEOPLE.delete(idx);
+      updateCompareBtnLabel();
+    });
+  });
+  resultsEl.querySelectorAll('.person-row').forEach(el=>{
+    el.addEventListener('click', ()=> renderDetail(Number(el.dataset.idx)));
+  });
+}
+
+function vBar(lv){
+  if(lv === null || lv === "" || lv === undefined) return '';
+  const n = Math.max(0, Math.min(4, Number(lv)));
+  return '■'.repeat(n) + '□'.repeat(4-n);
+}
+
+function buildRadarSvg(groups, byGroup){
+  const cx = 170, cy = 158, R = 100;
+  const n = groups.length;
+  const angleFor = i => (-90 + i * (360/n)) * Math.PI/180;
+  const pt = (i, r) => [cx + r*Math.cos(angleFor(i)), cy + r*Math.sin(angleFor(i))];
+
+  // グリッド(Lv 1〜4の同心多角形) + 目盛り数値(上方向の軸に表示)
+  let gridPolys = '';
+  let scaleLabels = '';
+  for(let lv=1; lv<=4; lv++){
+    const r = R * (lv/4);
+    const pts = groups.map((g,i)=> pt(i, r).join(',')).join(' ');
+    gridPolys += `<polygon points="${pts}" fill="none" stroke="#D9DCE3" stroke-width="1"/>`;
+    scaleLabels += `<text x="${cx+4}" y="${cy - r}" font-size="8" fill="#9AA1AC">${lv.toFixed(1)}</text>`;
+  }
+  // 軸線
+  let axisLines = '';
+  groups.forEach((g,i)=>{
+    const [x,y] = pt(i, R);
+    axisLines += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#E1E4EA" stroke-width="1"/>`;
+  });
+  // データ多角形
+  const avgList = groups.map(g=>{
+    const vals = (byGroup[g]||[]).filter(r=>r.lv!==null && r.lv!=="").map(r=>Number(r.lv));
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+  });
+  const dataPts = groups.map((g,i)=> pt(i, R*(avgList[i]/4)));
+  const dataPolyStr = dataPts.map(p=>p.join(',')).join(' ');
+  let dots = '';
+  groups.forEach((g,i)=>{
+    const [x,y] = dataPts[i];
+    dots += `<circle cx="${x}" cy="${y}" r="2.6" fill="#1F3864"/>`;
+  });
+  // ラベル(工程名のみ、数値はチャート下の一覧に分離)
+  let labels = '';
+  groups.forEach((g,i)=>{
+    const [x,y] = pt(i, R + 24);
+    const angleDeg = (-90 + i * (360/n));
+    let anchor = 'middle';
+    if(angleDeg < -100 || angleDeg > 100) anchor = 'end';
+    else if(angleDeg > -80 && angleDeg < 80 && Math.abs(angleDeg) > 15) anchor = 'start';
+    labels += `<text x="${x}" y="${y}" font-size="9" fill="#1C2430" text-anchor="${anchor}" dominant-baseline="middle">${escapeHtml(g)}</text>`;
+  });
+
+  const svg = `
+    <svg viewBox="0 0 340 336" width="100%" style="max-width:340px;display:block;margin:0 auto;">
+      ${gridPolys}
+      ${axisLines}
+      <polygon points="${dataPolyStr}" fill="#3C7AC7" fill-opacity="0.35" stroke="#1F3864" stroke-width="2"/>
+      ${dots}
+      ${labels}
+      ${scaleLabels}
+    </svg>`;
+
+  const legendRows = groups.map((g,i)=>`
+    <div class="v-radar-legend-row">
+      <span class="v-radar-legend-name">${escapeHtml(g)}</span>
+      <span class="v-radar-legend-val num">${avgList[i].toFixed(2)}</span>
+    </div>`).join('');
+  const legend = `<div class="v-radar-legend">${legendRows}</div>`;
+
+  return svg + legend;
+}
+
+function calcTenureText(hireDateStr){
+  if(!hireDateStr) return '';
+  const hire = new Date(hireDateStr + 'T00:00:00');
+  if(isNaN(hire.getTime())) return '';
+  const today = new Date();
+  const years = Math.floor(((today - hire) / (1000*60*60*24*365)) * 10) / 10;
+  if(years < 0) return '';
+  return '社歴' + years.toFixed(1) + '年';
+}
+
+function updateCompareBtnLabel(){
+  const btn = document.getElementById('compareBtn');
+  if(!btn) return;
+  btn.textContent = SELECTED_PEOPLE.size > 0
+    ? `📊 選択した${SELECTED_PEOPLE.size}人を比較する`
+    : '📊 全員を比較する';
+}
+
+function renderCompare(){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.add('compare-full');
+  const main = document.getElementById('detailPane');
+
+  const targetPeople = SELECTED_PEOPLE.size > 0
+    ? PEOPLE.filter((p, idx)=> SELECTED_PEOPLE.has(idx))
+    : PEOPLE;
+
+  const groupAvgFor = (p, g)=>{
+    const block = latestBlock(p.rows);
+    const vals = block.filter(r=>r.group===g && r.lv!==null && r.lv!=="").map(r=>Number(r.lv));
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+  };
+
+  const rowsHtml = targetPeople.map(p=>{
+    const block = latestBlock(p.rows);
+    const total = avgLv(block);
+    const cells = GROUP_ORDER.map(g=>{
+      const v = groupAvgFor(p, g);
+      return `<td class="v-c v-cmp-cell">${v===null ? '-' : v.toFixed(2)}</td>`;
+    }).join('');
+    return `
+      <tr>
+        <td class="v-cmp-name">${escapeHtml(p.name)}</td>
+        <td class="v-c v-cmp-total">${total===null ? '-' : total}</td>
+        ${cells}
+      </tr>`;
+  }).join('');
+
+  const headerCells = GROUP_ORDER.map(g=>`<th class="v-c">${escapeHtml(g)}</th>`).join('');
+  const titleSuffix = SELECTED_PEOPLE.size > 0 ? `（選択した${targetPeople.length}人）` : `（全${targetPeople.length}人）`;
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <div class="v-cmp-head">
+        <h2>比較表（工程別 平均Lv）${titleSuffix}</h2>
+        <button id="pdfBtn" class="v-pdf-btn">📄 PDFで保存</button>
+      </div>
+      <div class="v-table-wrap">
+        <table class="v-table v-cmp-table">
+          <thead>
+            <tr>
+              <th>氏名</th>
+              <th class="v-c">総合</th>
+              ${headerCells}
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', ()=>{
+    document.getElementById('mainArea').classList.remove('compare-full');
+    renderList();
+  });
+  document.getElementById('pdfBtn').addEventListener('click', ()=> window.print());
+}
+
+function renderDetail(idx){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.remove('compare-full');
+  const main = document.getElementById('detailPane');
+  const p = PEOPLE[idx];
+  const block = latestBlock(p.rows);
+  const line = block[0] ? block[0].line : '';
+  const date = block[0] ? block[0].date : '';
+  const hire = block[0] ? block[0].hire : '';
+  const tenureText = calcTenureText(hire);
+  const avg = avgLv(block);
+  const shidoCount = block.filter(r=>r.sd === '有').length;
+
+  const byGroup = {};
+  block.forEach(r=>{
+    if(!byGroup[r.group]) byGroup[r.group] = [];
+    byGroup[r.group].push(r);
+  });
+  const groups = GROUP_ORDER.filter(g=>byGroup[g]).concat(Object.keys(byGroup).filter(g=>!GROUP_ORDER.includes(g)));
+
+  let no = 0;
+  const rowsHtml = groups.map(g=>{
+    const groupRow = `<tr class="v-group-row"><td colspan="6">${escapeHtml(g)}</td></tr>`;
+    const itemRows = byGroup[g].map(r=>{
+      no++;
+      const lv = r.lv === null || r.lv === "" ? "-" : r.lv;
+      const sdClass = r.sd === "有" ? "sd-yes" : "sd-no";
+      return `
+        <tr>
+          <td class="v-c">${no}</td>
+          <td>${escapeHtml(r.item)}</td>
+          <td class="v-c v-lv" style="color:${lvColor(r.lv)}">${lv}</td>
+          <td class="v-c"><span class="sd-badge ${sdClass}">${r.sd || '無'}</span></td>
+          <td class="v-bar">${vBar(r.lv)}</td>
+          <td class="v-remarks">${r.remarks ? escapeHtml(r.remarks) : ''}</td>
+        </tr>`;
+    }).join('');
+    return groupRow + itemRows;
+  }).join('');
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <div class="v-cmp-head">
+        <div class="detail-hd" style="margin-bottom:0;">
+          <div class="n">${escapeHtml(p.name)}</div>
+          <div class="meta">${escapeHtml(line) || '所属未記入'}　${date || ''}${tenureText ? '　'+tenureText : ''}</div>
+          <div class="meta" style="margin-top:4px;">総合平均レベル: <b class="num">${avg === null ? '-' : avg}</b>　　指導経験のある項目数: <b class="num">${shidoCount} / ${block.length}</b> 項目</div>
+        </div>
+        <button id="pdfBtn" class="v-pdf-btn">📄 PDFで保存</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>工程別スキルレーダー（平均Lv）</h2>
+      ${buildRadarSvg(groups, byGroup)}
+    </div>
+    <div class="v-table-wrap">
+      <table class="v-table">
+        <colgroup>
+          <col class="v-col-no"><col class="v-col-item"><col class="v-col-lv">
+          <col class="v-col-sd"><col class="v-col-bar"><col class="v-col-remarks">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="v-c">No.</th>
+            <th>スキル項目</th>
+            <th class="v-c">Lv</th>
+            <th class="v-c">指導</th>
+            <th>達成度</th>
+            <th>備考</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', renderList);
+  document.getElementById('pdfBtn').addEventListener('click', ()=> window.print());
+}
+
+function escapeHtml(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
