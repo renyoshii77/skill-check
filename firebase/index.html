@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>包装工程 スキルチェック</title>
+<style>
+  :root{
+    --navy:#1F3864;
+    --navy-2:#2E4C82;
+    --bg:#F3F4F7;
+    --card:#FFFFFF;
+    --amber:#D98E2B;
+    --green:#2F8F5B;
+    --text:#1C2430;
+    --text-muted:#6B7280;
+    --border:#E1E4EA;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  .num{font-family:"DejaVu Sans Mono","SF Mono",monospace;}
+
+  header.top{
+    position:sticky;top:0;z-index:50;background:var(--navy);color:#fff;
+    padding:14px 16px 12px;box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  .v-icon-btn{position:absolute;top:14px;width:32px;height:32px;border-radius:9px;
+    border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);
+    color:#fff;font-size:15px;line-height:1;cursor:pointer;display:flex;
+    align-items:center;justify-content:center;}
+  .v-icon-btn:active{background:rgba(255,255,255,.25);}
+  .v-floating-panel{position:sticky;top:0;z-index:49;max-width:520px;margin:0 auto 10px;
+    border-top:none;border-radius:0 0 var(--radius) var(--radius);
+    box-shadow:0 6px 14px rgba(0,0,0,.12);}
+  header.top h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em;}
+  header.top .sub{font-size:11px;opacity:.75;margin-top:2px;}
+  .progress-wrap{display:flex;align-items:center;gap:10px;margin-top:10px;}
+  .ring{position:relative;width:38px;height:38px;flex:none;}
+  .ring svg{transform:rotate(-90deg);}
+  .ring circle{fill:none;stroke-width:4;}
+  .ring .bg{stroke:rgba(255,255,255,.25);}
+  .ring .fg{stroke:var(--amber);stroke-linecap:round;transition:stroke-dashoffset .3s ease;}
+  .ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:700;}
+  .progress-text{font-size:12px;opacity:.9;}
+  .progress-text b{font-size:14px;}
+
+  main{max-width:520px;margin:0 auto;padding:14px 12px 100px;}
+
+  @media (min-width: 860px){
+    main{max-width:900px;}
+    .card{max-width:900px;margin-left:auto;margin-right:auto;}
+    #groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start;}
+    #groups .group{margin-bottom:0;}
+    .save-bar{display:flex;justify-content:center;}
+    .save-btn{max-width:900px;}
+  }
+  .mainlike{max-width:520px;margin:0 auto;padding:14px 12px 100px;}
+
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
+    padding:14px;margin-bottom:12px;}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--navy);font-weight:700;}
+  .field{margin-bottom:10px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+  .field input, .field select{
+    width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:9px;
+    font-size:15px;background:#FAFBFC;color:var(--text);
+    height:42px;box-sizing:border-box;-webkit-appearance:none;appearance:none;
+    line-height:normal;
+  }
+  .field input[type="date"]{padding:9px 10px;}
+  .field input:focus, .field select:focus{outline:2px solid var(--navy-2);outline-offset:1px;}
+  .row2{display:flex;gap:8px;align-items:flex-end;}
+  .row2 .field{flex:1;min-width:0;}
+  .row2 .field input{width:100%;min-width:0;}
+
+  .load-btn{
+    display:inline-flex;align-items:center;gap:6px;background:#EEF1F6;color:var(--navy);
+    border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:12.5px;
+    font-weight:600;margin-top:8px;cursor:pointer;
+  }
+  .load-btn:active{background:#E3E7EE;}
+
+  .v-admin-card{margin-top:14px;}
+  .v-admin-link{width:100%;background:none;border:none;padding:4px 0;font-size:12.5px;
+    color:var(--text-muted);text-align:left;cursor:pointer;}
+  .v-admin-add-btn{width:100%;padding:10px 0;border:none;border-radius:10px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:4px;}
+  .v-admin-add-btn:active{background:var(--navy-2);}
+  .v-admin-msg{font-size:12px;margin-top:8px;min-height:16px;}
+  .v-admin-msg.ok{color:var(--green);}
+  .v-admin-msg.err{color:#C0392B;}
+  .v-admin-section-title{font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;
+    padding-top:10px;border-top:1px solid var(--border);}
+  .v-admin-del-btn{width:100%;padding:10px 0;border:1.5px solid #C0392B;border-radius:10px;
+    background:#fff;color:#C0392B;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:4px;}
+  .v-admin-del-btn:active{background:#FBEAE8;}
+
+  .group{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
+    margin-bottom:10px;overflow:hidden;}
+  .group-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;
+    cursor:pointer;user-select:none;}
+  .group-hd .name{font-size:14px;font-weight:700;}
+  .group-hd .meta{display:flex;align-items:center;gap:8px;}
+  .group-hd .count{font-size:11px;color:var(--text-muted);}
+  .group-hd .count b{color:var(--navy);}
+  .chev{width:9px;height:9px;border-right:2px solid var(--text-muted);border-bottom:2px solid var(--text-muted);
+    transform:rotate(45deg);transition:transform .2s ease;margin-right:2px;}
+  .group.open .chev{transform:rotate(-135deg);}
+  .group-body{max-height:0;overflow:hidden;transition:max-height .25s ease;}
+  .group.open .group-body{max-height:4000px;}
+  .item{padding:12px 14px;border-top:1px solid var(--border);}
+  .item .iname{font-size:13.5px;font-weight:600;margin-bottom:8px;}
+  .lv-row{display:flex;gap:6px;margin-bottom:8px;}
+  .lv-btn{
+    flex:1;aspect-ratio:1;max-height:40px;border-radius:10px;border:1.5px solid var(--border);
+    background:#FAFBFC;font-size:15px;font-weight:700;color:var(--text-muted);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .lv-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .lv-btn.active[data-lv="0"]{background:#B0B4BA;border-color:#B0B4BA;}
+  .lv-btn.active[data-lv="1"]{background:#CBBE8A;border-color:#CBBE8A;}
+  .lv-btn.active[data-lv="2"]{background:#D9A94E;border-color:#D9A94E;}
+  .lv-btn.active[data-lv="3"]{background:#8FBF6B;border-color:#8FBF6B;}
+  .lv-btn.active[data-lv="4"]{background:#2F8F5B;border-color:#2F8F5B;}
+  .sub-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .sub-label{font-size:11.5px;color:var(--text-muted);flex:none;width:60px;}
+  .toggle{display:flex;flex:1;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;}
+  .toggle button{flex:1;padding:7px 0;font-size:12.5px;font-weight:600;border:none;background:#FAFBFC;
+    color:var(--text-muted);cursor:pointer;}
+  .toggle button.active.yes{background:var(--green);color:#fff;}
+  .toggle button.active.no{background:#9AA1AC;color:#fff;}
+  .remarks input{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:8px;
+    font-size:13px;background:#FAFBFC;color:var(--text);}
+
+  .saved-list{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
+    padding:12px 14px;margin-bottom:12px;}
+  .saved-list h2{font-size:13px;margin:0 0 8px;color:var(--navy);}
+  .saved-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;
+    border-top:1px solid var(--border);}
+  .saved-item:first-of-type{border-top:none;}
+  .saved-item .n{font-size:13.5px;font-weight:600;}
+  .saved-item .d{font-size:11px;color:var(--text-muted);}
+  .saved-item button{background:#EEF1F6;border:1px solid var(--border);border-radius:8px;
+    padding:6px 10px;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;}
+  .empty-note{font-size:12px;color:var(--text-muted);}
+
+  .save-bar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:linear-gradient(180deg,rgba(243,244,247,0),var(--bg) 30%);
+    padding:14px 12px 16px;display:flex;justify-content:center;}
+  .save-btn{max-width:496px;width:100%;background:var(--navy);color:#fff;border:none;border-radius:12px;
+    padding:14px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(31,56,100,.35);cursor:pointer;}
+  .save-btn:active{background:var(--navy-2);}
+  .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(8px);
+    background:var(--text);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;
+    opacity:0;transition:opacity .2s ease, transform .2s ease;pointer-events:none;z-index:60;
+    max-width:88vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  ::selection{background:var(--amber);color:#fff;}
+
+  .legend{display:flex;flex-direction:column;gap:6px;}
+  .legend-row{display:flex;align-items:baseline;gap:8px;font-size:12.5px;}
+  .legend-row .lvnum{flex:none;width:20px;height:20px;border-radius:6px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;}
+  .legend-row .lvdesc{color:var(--text);}
+  .legend-sd{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+
+  #lockScreen{
+    position:fixed;inset:0;z-index:200;background:var(--navy);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #lockScreen .box{background:#fff;border-radius:16px;padding:26px 22px;max-width:320px;width:100%;
+    box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  #lockScreen h2{margin:0 0 6px;font-size:16px;color:var(--navy);}
+  #lockScreen p{margin:0 0 16px;font-size:12.5px;color:var(--text-muted);}
+  #lockScreen input{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:16px;text-align:center;letter-spacing:.05em;margin-bottom:10px;}
+  #lockScreen button{width:100%;padding:12px;border:none;border-radius:10px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:14.5px;cursor:pointer;}
+  #lockScreen .err{color:#C0392B;font-size:12px;margin-top:8px;display:none;}
+  #appRoot{display:block;}
+
+</style>
+</head>
+<body>
+
+<div id="appRoot">
+<header class="top">
+  <button id="adminToggleBtn" class="v-icon-btn" style="right:14px;">🔧</button>
+  <h1>包装工程 スキルチェック</h1>
+  <div class="sub">氏名を入力して各項目のLv・指導経験・備考を記録します</div>
+  <div class="progress-wrap">
+    <div class="ring">
+      <svg width="38" height="38" viewBox="0 0 38 38">
+        <circle class="bg" cx="19" cy="19" r="16"></circle>
+        <circle class="fg" id="ringFg" cx="19" cy="19" r="16" stroke-dasharray="100.5" stroke-dashoffset="100.5"></circle>
+      </svg>
+      <div class="pct num" id="ringPct">0%</div>
+    </div>
+    <div class="progress-text">入力済み <b class="num" id="doneCount">0</b> / <span class="num" id="totalCount">0</span> 項目</div>
+  </div>
+</header>
+
+<div id="adminPanel" class="card v-floating-panel" style="display:none;">
+  <div class="v-admin-section-title" style="border-top:none;padding-top:0;">🔧 管理者: 項目を追加・削除</div>
+  <div class="v-admin-section-title">項目を追加する</div>
+  <div class="field">
+    <label for="adminGroupSelect">工程</label>
+    <select id="adminGroupSelect"></select>
+  </div>
+  <div class="field" id="adminNewGroupField" style="display:none;">
+    <label for="adminNewGroupInput">新しい工程名</label>
+    <input id="adminNewGroupInput" type="text" placeholder="例: 新工程">
+  </div>
+  <div class="field">
+    <label for="adminItemInput">追加するスキル項目名</label>
+    <input id="adminItemInput" type="text" placeholder="例: 新しい作業">
+  </div>
+  <button id="adminAddBtn" class="v-admin-add-btn">この項目を追加する</button>
+  <div id="adminMsg" class="v-admin-msg"></div>
+
+  <div class="v-admin-section-title" style="margin-top:18px;">既存の項目を削除する</div>
+  <div class="field">
+    <label for="adminDelGroupSelect">工程</label>
+    <select id="adminDelGroupSelect"></select>
+  </div>
+  <div class="field">
+    <label for="adminDelItemSelect">削除するスキル項目</label>
+    <select id="adminDelItemSelect"></select>
+  </div>
+  <button id="adminDelBtn" class="v-admin-del-btn">この項目を削除する</button>
+  <div id="adminDelMsg" class="v-admin-msg"></div>
+</div>
+
+<main>
+  <div class="card">
+    <h2>評価レベル（Lv）の基準</h2>
+    <div class="legend">
+      <div class="legend-row"><span class="lvnum num">0</span><span class="lvdesc">未経験・未着手</span></div>
+      <div class="legend-row"><span class="lvnum num">1</span><span class="lvdesc">微妙（一人でできるか怪しい）</span></div>
+      <div class="legend-row"><span class="lvnum num">2</span><span class="lvdesc">一人で作業できる</span></div>
+      <div class="legend-row"><span class="lvnum num">3</span><span class="lvdesc">他者に指導できる</span></div>
+      <div class="legend-row"><span class="lvnum num">4</span><span class="lvdesc">熟練・工程の管理/教育担当ができる</span></div>
+    </div>
+    <div class="legend-sd">指導経験：他の従業員へ指導・教育した経験があれば「有」、なければ「無」を選んでください。</div>
+  </div>
+
+  <div class="card">
+    <h2>基本情報</h2>
+    <div class="field">
+      <label for="empName">氏名</label>
+      <input id="empName" type="text" placeholder="例: 吉井蓮" autocomplete="off" list="empNameList">
+      <datalist id="empNameList"></datalist>
+    </div>
+    <div class="field">
+      <label for="empLine">所属ライン</label>
+      <input id="empLine" type="text" placeholder="例: 瓶包装" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="empDate">記入日</label>
+      <input id="empDate" type="date">
+    </div>
+    <div class="field">
+      <label for="empHireYear">入社日</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="empHireYear" type="number" inputmode="numeric" placeholder="2020" min="1980" max="2100" style="flex:1.6;">
+        <span style="color:var(--text-muted);font-size:13px;">年</span>
+        <input id="empHireMonth" type="number" inputmode="numeric" placeholder="1" min="1" max="12" style="flex:1;">
+        <span style="color:var(--text-muted);font-size:13px;">月</span>
+        <input id="empHireDay" type="number" inputmode="numeric" placeholder="1" min="1" max="31" style="flex:1;">
+        <span style="color:var(--text-muted);font-size:13px;">日</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>社歴（自動計算）</label>
+      <input id="empTenure" type="text" readonly placeholder="自動計算" style="background:#EEF1F6;color:var(--text-muted);font-size:13px;">
+    </div>
+  </div>
+
+  <div id="groups"></div>
+</main>
+
+<div class="save-bar">
+  <button class="save-btn" id="saveBtn">保存する</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+let GROUPS = [
+  ["2F新カートナー", ["供給","仕上げ","機械操作","型替え","指図記入"]],
+  ["旧カートナー", ["供給","仕上げ","機械操作","型替え","指図記入"]],
+  ["プラスチベース", ["作業","OP","ラベル巻き","キャップ出し","シュリンク","充填","包装","指図記入"]],
+  ["新ライン", ["充填OP","ビン検品工程","仕上げ","機械操作","型替え・品種切り替え","瓶出し","指図記入"]],
+  ["旧ライン", ["充填OP","ラベル機","型替え・品種切り替え","指図記入"]],
+  ["手作業", ["回転盤","シュリンク","糊付け","仕上げ","ロット押し","指図記入"]],
+  ["選別工程", ["選別機1号機","選別機2号機","選別機3号機","選別機4号機","厚み選別機","目視選別機(金属探知機含む)","カプセル選別(ルミナー含む)","指図記入"]],
+  ["STP工程", ["STP2","STP3","指図記入"]],
+  ["給袋工程", ["仕上げ","OP","指図記入"]],
+  ["ピロー", ["供給","機械操作","指図記入"]],
+  ["PTP工程", ["検品","機械操作","指図記入"]],
+];
+// ↑ サーバー(スプレッドシートの「設定」シート)から項目リストを取得できなかった時の、
+//   さらに最終手段としての初期値(フォールバック)。通常はこの下の「前回取得できた項目リスト」が優先される。
+
+const CACHED_GROUPS_KEY = 'skillcheck_cached_groups_v1';
+(function loadCachedGroupsIfAny(){
+  try{
+    const raw = localStorage.getItem(CACHED_GROUPS_KEY);
+    if(raw){
+      const cached = JSON.parse(raw);
+      if(Array.isArray(cached) && cached.length){
+        GROUPS = cached;
+      }
+    }
+  }catch(e){}
+})();
+
+function cacheGroupsToLocal(){
+  try{ localStorage.setItem(CACHED_GROUPS_KEY, JSON.stringify(GROUPS)); }catch(e){}
+}
+
+let TOTAL_ITEMS = 0;
+let state = {};
+
+function rebuildFromGroups(preserveState){
+  TOTAL_ITEMS = GROUPS.reduce((s,[,items])=>s+items.length,0);
+  document.getElementById('totalCount').textContent = TOTAL_ITEMS;
+  const newState = {};
+  GROUPS.forEach(([g,items])=>items.forEach(it=>{
+    const key = g+'|'+it;
+    newState[key] = (preserveState && state[key]) ? state[key] : {lv:null, sd:null, remarks:""};
+  }));
+  state = newState;
+}
+rebuildFromGroups(false);
+
+const RING_CIRC = 100.5;
+
+function render(){
+  const wrap = document.getElementById('groups');
+  wrap.innerHTML = '';
+  GROUPS.forEach(([gname, items], gi) => {
+    const filled = items.filter(it => state[gname+'|'+it].lv !== null).length;
+    const div = document.createElement('div');
+    div.className = 'group';
+    div.dataset.idx = gi;
+    div.innerHTML = `
+      <div class="group-hd" data-toggle="${gi}">
+        <div class="name">${gname}</div>
+        <div class="meta">
+          <div class="count"><b class="fillcount">${filled}</b>/${items.length}</div>
+          <div class="chev"></div>
+        </div>
+      </div>
+      <div class="group-body">
+        ${items.map(it => itemHtml(gname, it)).join('')}
+      </div>`;
+    wrap.appendChild(div);
+  });
+
+  wrap.querySelectorAll('[data-toggle]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      el.closest('.group').classList.toggle('open');
+    });
+  });
+  wrap.querySelectorAll('.lv-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key, lv = parseInt(btn.dataset.lv,10);
+      state[key].lv = (state[key].lv === lv) ? null : lv;
+      render(); restoreOpenGroups();
+      updateProgress();
+      saveDraftToLocal();
+    });
+  });
+  wrap.querySelectorAll('.toggle button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key, val = btn.dataset.val;
+      state[key].sd = (state[key].sd === val) ? null : val;
+      render(); restoreOpenGroups();
+      updateProgress();
+      saveDraftToLocal();
+    });
+  });
+  wrap.querySelectorAll('.remarks input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      state[inp.dataset.key].remarks = inp.value;
+      saveDraftToLocal();
+    });
+    inp.addEventListener('click', e=>e.stopPropagation());
+  });
+  updateProgress();
+}
+
+function itemHtml(gname, it){
+  const key = gname+'|'+it;
+  const s = state[key];
+  const lvBtns = [0,1,2,3,4].map(n=>`<div class="lv-btn ${s.lv===n?'active':''} num" data-key="${key}" data-lv="${n}">${n}</div>`).join('');
+  return `
+    <div class="item">
+      <div class="iname">${it}</div>
+      <div class="lv-row">${lvBtns}</div>
+      <div class="sub-row">
+        <div class="sub-label">指導経験</div>
+        <div class="toggle">
+          <button data-key="${key}" data-val="有" class="${s.sd==='有'?'active yes':''}">有</button>
+          <button data-key="${key}" data-val="無" class="${s.sd==='無'?'active no':''}">無</button>
+        </div>
+      </div>
+      <div class="remarks">
+        <input type="text" placeholder="備考(任意)" value="${escapeAttr(s.remarks)}" data-key="${key}">
+      </div>
+    </div>`;
+}
+
+function escapeAttr(str){
+  return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+let openSet = new Set();
+function restoreOpenGroups(){
+  document.querySelectorAll('.group').forEach(g=>{
+    if(openSet.has(g.dataset.idx)) g.classList.add('open');
+  });
+}
+document.getElementById('groups').addEventListener('click', (e)=>{
+  const hd = e.target.closest('[data-toggle]');
+  if(hd){
+    const idx = hd.dataset.toggle;
+    if(openSet.has(idx)) openSet.delete(idx); else openSet.add(idx);
+  }
+});
+
+function updateProgress(){
+  const done = Object.values(state).filter(s=>s.lv!==null).length;
+  document.getElementById('doneCount').textContent = done;
+  const pct = TOTAL_ITEMS ? Math.round(done/TOTAL_ITEMS*100) : 0;
+  document.getElementById('ringPct').textContent = pct+'%';
+  const offset = RING_CIRC - (RING_CIRC*pct/100);
+  document.getElementById('ringFg').style.strokeDashoffset = offset;
+}
+
+function showToast(msg, duration){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=>t.classList.remove('show'), duration || 3200);
+}
+
+// ↓ Firebaseプロジェクトの設定(Firebaseコンソールの「プロジェクトの設定」→「マイアプリ」からコピーしたもの)
+const firebaseConfig = {
+  apiKey: "AIzaSyBItCxFGI8UC4GQ3V2O-WbtIUhyTM-Qmp4",
+  authDomain: "skill-check-062.firebaseapp.com",
+  projectId: "skill-check-062",
+  storageBucket: "skill-check-062.firebasestorage.app",
+  messagingSenderId: "81920143127",
+  appId: "1:81920143127:web:5a534c9dbb36e7444a5152",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+const DRAFT_KEY = 'skillcheck_draft_v1';
+
+function saveDraftToLocal(){
+  try{
+    const draft = {
+      name: document.getElementById('empName').value,
+      line: document.getElementById('empLine').value,
+      date: document.getElementById('empDate').value,
+      hireYear: document.getElementById('empHireYear').value,
+      hireMonth: document.getElementById('empHireMonth').value,
+      hireDay: document.getElementById('empHireDay').value,
+      state: state,
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }catch(e){}
+}
+
+function clearDraft(){
+  try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+}
+
+function tryRestoreDraft(){
+  try{
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if(!raw) return;
+    const draft = JSON.parse(raw);
+    const hasAnyEntry = draft.name || (draft.state && Object.values(draft.state).some(s=>s.lv!==null || s.sd || s.remarks));
+    if(!hasAnyEntry){ clearDraft(); return; }
+    const label = draft.name ? `氏名: ${draft.name}` : '氏名: (未入力)';
+    if(!confirm(`前回、途中まで入力していたデータがあります。復元しますか？\n（${label}）`)){
+      clearDraft();
+      return;
+    }
+    document.getElementById('empName').value = draft.name || '';
+    document.getElementById('empLine').value = draft.line || '';
+    if(draft.date) document.getElementById('empDate').value = draft.date;
+    document.getElementById('empHireYear').value = draft.hireYear || '';
+    document.getElementById('empHireMonth').value = draft.hireMonth || '';
+    document.getElementById('empHireDay').value = draft.hireDay || '';
+    updateTenureDisplay();
+    if(draft.state){
+      Object.keys(draft.state).forEach(k=>{
+        if(state[k] !== undefined) state[k] = draft.state[k];
+      });
+    }
+    render();
+    showToast('下書きを復元しました');
+  }catch(e){
+    console.error('下書き復元エラー', e);
+  }
+}
+
+function resetForm(){
+  document.getElementById('empName').value = '';
+  document.getElementById('empLine').value = '';
+  document.getElementById('empHireYear').value = '';
+  document.getElementById('empHireMonth').value = '';
+  document.getElementById('empHireDay').value = '';
+  document.getElementById('empTenure').value = '';
+  const today = new Date();
+  document.getElementById('empDate').value = today.toISOString().slice(0,10);
+  Object.keys(state).forEach(k=>{ state[k] = {lv:null, sd:null, remarks:""}; });
+  openSet = new Set();
+  render();
+}
+
+// 入社日(YYYY-MM-DD)を組み立てる。日が未入力なら1日とみなす
+function getHireDateStr(){
+  const y = document.getElementById('empHireYear').value.trim();
+  const m = document.getElementById('empHireMonth').value.trim();
+  const d = document.getElementById('empHireDay').value.trim();
+  if(!y || !m) return '';
+  const mm = String(m).padStart(2,'0');
+  const dd = String(d || 1).padStart(2,'0');
+  return `${y}-${mm}-${dd}`;
+}
+
+// 入社日から社歴を計算(Excel側の =ROUNDDOWN((TODAY-入社日)/365,1) と同じ考え方)
+function calcTenureText(hireDateStr){
+  if(!hireDateStr) return '';
+  const hire = new Date(hireDateStr + 'T00:00:00');
+  if(isNaN(hire.getTime())) return '';
+  const today = new Date();
+  const years = Math.floor(((today - hire) / (1000*60*60*24*365)) * 10) / 10;
+  if(years < 0) return '';
+  return '社歴' + years.toFixed(1) + '年';
+}
+
+function updateTenureDisplay(){
+  document.getElementById('empTenure').value = calcTenureText(getHireDateStr());
+}
+document.getElementById('empHireYear').addEventListener('input', ()=>{ updateTenureDisplay(); saveDraftToLocal(); });
+document.getElementById('empHireMonth').addEventListener('input', ()=>{ updateTenureDisplay(); saveDraftToLocal(); });
+document.getElementById('empHireDay').addEventListener('input', ()=>{ updateTenureDisplay(); saveDraftToLocal(); });
+
+async function sendToSheet(record){
+  try{
+    const itemsMap = {};
+    Object.keys(record.items).forEach(key=>{
+      const s = record.items[key];
+      itemsMap[key] = { lv: (s.lv===undefined?null:s.lv), sd: s.sd||null, remarks: s.remarks||"" };
+    });
+    const snapshot = {
+      line: record.line, date: record.date, hireDate: record.hireDate, items: itemsMap,
+    };
+    const currentRef = doc(db, 'checks', record.name);
+    await setDoc(currentRef, { ...snapshot, updatedAt: serverTimestamp() });
+    await addDoc(collection(db, 'checks', record.name, 'history'), { ...snapshot, ts: serverTimestamp() });
+    return { ok:true };
+  }catch(e){
+    return { ok:false, error: '通信エラー: ' + (e.message || e) };
+  }
+}
+
+async function saveData(){
+  const name = document.getElementById('empName').value.trim();
+  if(!name){ showToast('氏名を入力してください'); return; }
+
+  const unfilledCount = Object.values(state).filter(s => s.lv === null).length;
+  if(unfilledCount > 0){
+    const ok = confirm(`まだ ${unfilledCount} 項目、Lvが未入力です。\nこのまま保存しますか？`);
+    if(!ok) return;
+  }
+
+  const record = {
+    name,
+    line: document.getElementById('empLine').value.trim(),
+    date: document.getElementById('empDate').value,
+    hireDate: getHireDateStr(),
+    items: state,
+    updatedAt: new Date().toISOString(),
+  };
+  const btn = document.getElementById('saveBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try{
+    const result = await sendToSheet(record);
+    if(result.ok){
+      const hireLabel = record.hireDate ? ('入社日:'+record.hireDate) : '入社日:未入力';
+      showToast('保存しました（'+hireLabel+'）');
+      clearDraft();
+      resetForm();
+    } else {
+      showToast('⚠️ 保存に失敗しました。もう一度お試しください（' + result.error + '）', 6000);
+    }
+  }catch(e){
+    showToast('⚠️ 保存に失敗しました。もう一度お試しください', 6000);
+    console.error(e);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveData);
+
+// 氏名欄からフォーカスが外れたとき、Firestoreに同じ名前があれば前回のデータを読み込む
+async function loadPreviousByName(){
+  const name = document.getElementById('empName').value.trim();
+  if(!name) return;
+  try{
+    const snap = await getDoc(doc(db, 'checks', name));
+    if(!snap.exists()) return;
+    const data = snap.data();
+
+    document.getElementById('empLine').value = data.line || '';
+    // 記入日は常に「今日」のままにする(前回データの日付では上書きしない)
+    if(data.hireDate){
+      const parts = String(data.hireDate).split('-');
+      if(parts.length >= 2){
+        document.getElementById('empHireYear').value = parts[0];
+        document.getElementById('empHireMonth').value = String(parseInt(parts[1],10));
+        if(parts[2]) document.getElementById('empHireDay').value = String(parseInt(parts[2],10));
+      }
+      updateTenureDisplay();
+    }
+
+    Object.keys(state).forEach(k=>{ state[k] = {lv:null, sd:null, remarks:""}; });
+    const items = data.items || {};
+    Object.keys(items).forEach(key=>{
+      if(state[key] !== undefined){
+        const it = items[key];
+        state[key] = { lv: (it.lv===undefined||it.lv===null) ? null : Number(it.lv), sd: it.sd || null, remarks: it.remarks || "" };
+      }
+    });
+    render();
+    saveDraftToLocal();
+    showToast(name + ' さんの前回データを読み込みました');
+  }catch(e){
+    console.error('前回データ読み込みエラー', e);
+  }
+}
+
+document.getElementById('empName').addEventListener('blur', loadPreviousByName);
+document.getElementById('empName').addEventListener('input', saveDraftToLocal);
+document.getElementById('empLine').addEventListener('input', saveDraftToLocal);
+document.getElementById('empDate').addEventListener('change', saveDraftToLocal);
+
+// 初期化
+// ---------------------------------------------------------------------------
+// 管理者用: 項目追加パネル
+// ---------------------------------------------------------------------------
+const ADMIN_ITEM_PASSWORD = "1222";
+let adminUnlocked = false;
+const NEW_GROUP_VALUE = "__NEW__";
+
+function populateAdminGroupSelect(){
+  const sel = document.getElementById('adminGroupSelect');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = GROUPS.map(([g])=>`<option value="${escapeAttr(g)}">${g}</option>`).join('')
+    + `<option value="${NEW_GROUP_VALUE}">＋新しい工程を追加</option>`;
+  if(current && [...sel.options].some(o=>o.value===current)) sel.value = current;
+
+  populateAdminDeleteSelects();
+}
+
+function populateAdminDeleteSelects(){
+  const groupSel = document.getElementById('adminDelGroupSelect');
+  if(!groupSel) return;
+  const currentGroup = groupSel.value;
+  groupSel.innerHTML = GROUPS.map(([g])=>`<option value="${escapeAttr(g)}">${g}</option>`).join('');
+  if(currentGroup && [...groupSel.options].some(o=>o.value===currentGroup)) groupSel.value = currentGroup;
+  populateAdminDeleteItemSelect();
+}
+
+function populateAdminDeleteItemSelect(){
+  const groupSel = document.getElementById('adminDelGroupSelect');
+  const itemSel = document.getElementById('adminDelItemSelect');
+  if(!groupSel || !itemSel) return;
+  const g = GROUPS.find(([g0])=>g0===groupSel.value);
+  const items = g ? g[1] : [];
+  itemSel.innerHTML = items.map(it=>`<option value="${escapeAttr(it)}">${it}</option>`).join('');
+}
+
+document.getElementById('adminToggleBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('adminPanel');
+  if(panel.style.display !== 'none'){
+    panel.style.display = 'none';
+    return;
+  }
+  if(!adminUnlocked){
+    const pw = prompt('管理者パスワードを入力してください');
+    if(pw === null) return;
+    if(pw !== ADMIN_ITEM_PASSWORD){ alert('パスワードが違います'); return; }
+    adminUnlocked = true;
+  }
+  populateAdminGroupSelect();
+  panel.style.display = 'block';
+});
+
+document.getElementById('adminGroupSelect').addEventListener('change', ()=>{
+  const isNew = document.getElementById('adminGroupSelect').value === NEW_GROUP_VALUE;
+  document.getElementById('adminNewGroupField').style.display = isNew ? 'block' : 'none';
+});
+
+document.getElementById('adminDelGroupSelect').addEventListener('change', populateAdminDeleteItemSelect);
+
+document.getElementById('adminAddBtn').addEventListener('click', async ()=>{
+  const msg = document.getElementById('adminMsg');
+  const sel = document.getElementById('adminGroupSelect');
+  const isNew = sel.value === NEW_GROUP_VALUE;
+  const group = (isNew ? document.getElementById('adminNewGroupInput').value : sel.value).trim();
+  const item = document.getElementById('adminItemInput').value.trim();
+
+  if(!group){ msg.textContent = '工程名を入力してください'; msg.className = 'v-admin-msg err'; return; }
+  if(!item){ msg.textContent = 'スキル項目名を入力してください'; msg.className = 'v-admin-msg err'; return; }
+
+  msg.textContent = '追加中...';
+  msg.className = 'v-admin-msg';
+  try{
+    const ref = doc(db, 'config', 'items');
+    const snap = await getDoc(ref);
+    const groups = snap.exists() ? (snap.data().groups || []) : [];
+    let g = groups.find(g0=>g0.name===group);
+    let alreadyExists = false;
+    if(g){
+      if(g.items.includes(item)) alreadyExists = true;
+      else g.items.push(item);
+    } else {
+      groups.push({ name: group, items: [item] });
+    }
+    await setDoc(ref, { groups });
+
+    GROUPS = groups.map(g0=>[g0.name, g0.items]);
+    rebuildFromGroups(true);
+    render();
+    populateAdminGroupSelect();
+    document.getElementById('adminItemInput').value = '';
+    msg.textContent = alreadyExists ? '既に存在します' : `「${group}」に「${item}」を追加しました`;
+    msg.className = 'v-admin-msg ok';
+  }catch(e){
+    msg.textContent = '通信に失敗しました: ' + (e.message || e);
+    msg.className = 'v-admin-msg err';
+    console.error(e);
+  }
+});
+
+document.getElementById('adminDelBtn').addEventListener('click', async ()=>{
+  const msg = document.getElementById('adminDelMsg');
+  const group = document.getElementById('adminDelGroupSelect').value;
+  const item = document.getElementById('adminDelItemSelect').value;
+
+  if(!group || !item){ msg.textContent = '削除する項目を選んでください'; msg.className = 'v-admin-msg err'; return; }
+  if(!confirm(`「${group}」の「${item}」を削除します。よろしいですか？\n(過去に保存済みのデータは削除されません)`)) return;
+
+  msg.textContent = '削除中...';
+  msg.className = 'v-admin-msg';
+  try{
+    const ref = doc(db, 'config', 'items');
+    const snap = await getDoc(ref);
+    const groups = snap.exists() ? (snap.data().groups || []) : [];
+    const g = groups.find(g0=>g0.name===group);
+    if(g) g.items = g.items.filter(it=>it!==item);
+    const filtered = groups.filter(g0=>g0.items.length>0);
+    await setDoc(ref, { groups: filtered });
+
+    GROUPS = filtered.map(g0=>[g0.name, g0.items]);
+    rebuildFromGroups(true);
+    render();
+    populateAdminGroupSelect();
+    msg.textContent = `「${group}」の「${item}」を削除しました`;
+    msg.className = 'v-admin-msg ok';
+  }catch(e){
+    msg.textContent = '通信に失敗しました: ' + (e.message || e);
+    msg.className = 'v-admin-msg err';
+    console.error(e);
+  }
+});
+
+async function loadConfigFromServer(){
+  const totalEl = document.getElementById('totalCount');
+  if(totalEl) totalEl.textContent = '…';
+  try{
+    const ref = doc(db, 'config', 'items');
+    let snap = await getDoc(ref);
+    if(!snap.exists()){
+      // 初回だけ: ファイルに書かれた初期値をそのままFirestoreに書き込む
+      const seedGroups = GROUPS.map(([name,items])=>({name, items}));
+      await setDoc(ref, { groups: seedGroups });
+      snap = await getDoc(ref);
+    }
+    const data = snap.data();
+    if(!data.groups || !data.groups.length){
+      throw new Error('項目リストが空でした');
+    }
+    GROUPS = data.groups.map(g=>[g.name, g.items]);
+    rebuildFromGroups(true);
+    render();
+    cacheGroupsToLocal();
+  }catch(e){
+    console.error('項目リストの読み込みエラー', e);
+    if(totalEl) totalEl.textContent = TOTAL_ITEMS;
+    showToast('⚠️ 最新の項目リストを取得できませんでした（前回保存分を表示中）。電波の良い場所でもう一度開き直してください', 6000);
+  }
+}
+
+// 過去に登録された氏名を候補として出す(表記ゆれで別人になるのを防ぐため)
+async function loadNameSuggestions(){
+  try{
+    const snap = await getDocs(collection(db, 'checks'));
+    const names = snap.docs.map(d=>d.id).filter(Boolean);
+    const listEl = document.getElementById('empNameList');
+    if(listEl){
+      listEl.innerHTML = names.map(n=>`<option value="${escapeAttr(n)}"></option>`).join('');
+    }
+  }catch(e){
+    console.error('氏名候補の読み込みエラー', e);
+  }
+}
+
+(function init(){
+  const today = new Date();
+  const iso = today.toISOString().slice(0,10);
+  document.getElementById('empDate').value = iso;
+  render();
+  loadNameSuggestions();
+  // 項目リストの読み込みが終わってから下書きを復元する(先に復元すると、
+  // まだ全項目そろってへん状態にマージしてしまい、一部が抜け落ちる不具合があったため)
+  loadConfigFromServer().then(()=>{
+    tryRestoreDraft();
+  });
+})();
+
+</script>
+</div>
+</body>
+</html>
