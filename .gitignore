@@ -1,0 +1,30 @@
+# ==== 絶対にcommitしてはいけないもの ====
+
+# 環境変数・秘密鍵・認証情報
+.env
+.env.*
+*.pem
+*.key
+*serviceAccount*.json
+*service-account*.json
+*credentials*.json
+*firebase-adminsdk*.json
+
+# 実データのエクスポート・バックアップ（従業員の実名等が含まれる可能性があるため）
+*.csv
+*.xlsx
+*.xls
+
+# OS・エディタが自動生成するファイル
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node.js / Firebase 関連の生成物
+node_modules/
+npm-debug.log*
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

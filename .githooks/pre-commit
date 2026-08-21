@@ -1,0 +1,43 @@
+#!/bin/bash
+# commit前チェック（gitleaks風の簡易セーフティネット）
+# 本当に危ないファイル（秘密鍵・認証情報・実データのエクスポート・OS生成物）だけを検知する。
+# Apps ScriptのURLやアプリ内パスワードは、クライアント側アプリの仕様上コードに含まれる
+# 前提のため、意図的にチェック対象から外している。
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+BLOCK=0
+
+for FILE in $STAGED_FILES; do
+  case "$FILE" in
+    *.env|*.env.*|*.pem|*.key|*serviceAccount*.json|*service-account*.json|*credentials*.json|*firebase-adminsdk*.json)
+      echo "🚫 危険: $FILE は秘密鍵・認証情報ファイルの可能性があります"
+      BLOCK=1
+      ;;
+    *.csv|*.xlsx|*.xls)
+      echo "⚠️  注意: $FILE は実データのエクスポートファイルかもしれません。従業員の実名などが含まれていないか確認してください"
+      BLOCK=1
+      ;;
+    .DS_Store|Thumbs.db)
+      echo "🚫 危険: $FILE はOSの生成ファイルです（.gitignoreに追加してください）"
+      BLOCK=1
+      ;;
+  esac
+
+  if [ -f "$FILE" ]; then
+    if grep -qE "BEGIN (RSA )?PRIVATE KEY|\"private_key\"" "$FILE" 2>/dev/null; then
+      echo "🚫 危険: $FILE の中に秘密鍵らしき文字列が見つかりました"
+      BLOCK=1
+    fi
+  fi
+done
+
+if [ "$BLOCK" -eq 1 ]; then
+  echo ""
+  echo "❌ commitを中止しました。"
+  echo "   問題なければ: git reset HEAD <ファイル名> でstagingから外してください"
+  echo "   意図的に上げていいファイルなら: .gitignore を調整してから再実行してください"
+  exit 1
+fi
+
+echo "✅ commit前チェック: 問題ありませんでした"
+exit 0
