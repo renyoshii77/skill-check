@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>包装工程 スキルチェック閲覧</title>
+<style>
+  :root{
+    --navy:#1F3864;
+    --navy-2:#2E4C82;
+    --bg:#F3F4F7;
+    --card:#FFFFFF;
+    --amber:#D98E2B;
+    --green:#2F8F5B;
+    --text:#1C2430;
+    --text-muted:#6B7280;
+    --border:#E1E4EA;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  .num{font-family:"DejaVu Sans Mono","SF Mono",monospace;}
+
+  header.top{
+    position:sticky;top:0;z-index:50;background:var(--navy);color:#fff;
+    padding:14px 16px 12px;box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  header.top h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em;}
+  header.top .sub{font-size:11px;opacity:.75;margin-top:2px;}
+
+  main{max-width:520px;margin:0 auto;padding:14px 12px 40px;}
+  #detailPane{display:none;}
+  #mainArea.detail-active #listPane{display:none;}
+  #mainArea.detail-active #detailPane{display:block;}
+
+  @media (min-width: 860px){
+    main#mainArea{max-width:960px;display:flex;align-items:flex-start;gap:16px;}
+    #mainArea #listPane{display:block !important;width:340px;flex:none;position:sticky;top:14px;
+      max-height:calc(100vh - 28px);overflow-y:auto;}
+    #mainArea #detailPane{display:block !important;flex:1;min-width:0;}
+    .v-table-wrap{overflow-x:auto;}
+    main#mainArea.compare-full{max-width:none;}
+    #mainArea.compare-full #listPane{display:none !important;}
+    #mainArea.compare-full #detailPane{max-width:1400px;margin:0 auto;}
+  }
+
+  @media print{
+    @page{ size: A4; margin: 10mm; }
+    header.top, #listPane, .backbar, .v-pdf-btn, .v-radar-legend, .demo-banner{display:none !important;}
+    #mainArea, #detailPane{display:block !important;max-width:none !important;margin:0 !important;padding:0 !important;}
+    body, #appRoot{background:#fff;}
+    .card{border:none;box-shadow:none;border-radius:0;padding:4px 0;margin-bottom:4px;
+      page-break-inside:avoid;}
+    .card h2{font-size:11px;margin:0 0 4px;}
+    .detail-hd .n{font-size:14px;}
+    .detail-hd .meta{font-size:9px;}
+    .v-cmp-head h2{font-size:12px;}
+
+    /* レーダーチャートを小さく */
+    .card svg{max-width:170px !important;}
+
+    /* 表を詰めて2ページ以内に収める */
+    .v-table-wrap{overflow:visible;border:none;}
+    table.v-table{font-size:7.5px;}
+    table.v-table thead th{background:#1F3864 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+      padding:3px 4px;font-size:7px;}
+    table.v-table td{padding:2px 4px;line-height:1.25;}
+    table.v-table tr.v-group-row td{padding:2px 5px;font-size:7.5px;}
+    .v-lv-badge, .sd-badge{padding:0;font-size:7.5px;}
+    table.v-cmp-table{font-size:8px;}
+    table.v-cmp-table th, table.v-cmp-table td{padding:3px 5px;}
+
+    table.v-table, table.v-cmp-table{page-break-inside:auto;}
+    table.v-table tr, table.v-cmp-table tr{page-break-inside:avoid;}
+    thead{display:table-header-group;}
+  }
+
+
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
+    padding:14px;margin-bottom:12px;}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--navy);font-weight:700;}
+
+  #lockScreen{
+    position:fixed;inset:0;z-index:200;background:var(--navy);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #lockScreen .box{background:#fff;border-radius:16px;padding:26px 22px;max-width:320px;width:100%;
+    box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  #lockScreen h2{margin:0 0 6px;font-size:16px;color:var(--navy);}
+  #lockScreen p{margin:0 0 16px;font-size:12.5px;color:var(--text-muted);}
+  #lockScreen input{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:16px;text-align:center;letter-spacing:.05em;margin-bottom:10px;}
+  #lockScreen button{width:100%;padding:12px;border:none;border-radius:10px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:14.5px;cursor:pointer;}
+  #lockScreen .err{color:#C0392B;font-size:12px;margin-top:8px;display:none;}
+  #appRoot{display:block;}
+  .demo-banner{background:#FFF4E0;color:#8A5A00;border-bottom:1px solid #F0D9A6;
+    padding:9px 16px;font-size:12.5px;text-align:center;font-weight:600;}
+
+  .setup-note{font-size:12px;color:var(--text-muted);line-height:1.6;}
+  .setup-note code{background:#EEF1F6;padding:1px 5px;border-radius:5px;font-size:11px;}
+
+  .loading{text-align:center;padding:40px 0;color:var(--text-muted);font-size:13px;}
+
+  .person-row{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 4px;border-top:1px solid var(--border);cursor:pointer;}
+  .person-row:first-child{border-top:none;}
+  .person-row .n{font-size:14.5px;font-weight:700;}
+  .person-row .d{font-size:11px;color:var(--text-muted);margin-top:2px;}
+  .person-row .avg{font-size:18px;font-weight:700;color:var(--navy);}
+  .person-row .chev{width:8px;height:8px;border-right:2px solid var(--text-muted);
+    border-bottom:2px solid var(--text-muted);transform:rotate(-45deg);margin-left:10px;}
+  .v-select-box{flex:none;width:19px;height:19px;margin-right:10px;accent-color:var(--navy);}
+
+  .backbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;}
+  .backbar .arrow{width:9px;height:9px;border-left:2px solid var(--navy);border-bottom:2px solid var(--navy);
+    transform:rotate(45deg);}
+  .backbar span{font-size:13px;color:var(--navy);font-weight:700;}
+
+  .detail-hd{margin-bottom:10px;}
+  .detail-hd .n{font-size:19px;font-weight:800;color:var(--navy);}
+  .detail-hd .meta{font-size:12px;color:var(--text-muted);margin-top:3px;}
+
+  .group-block{margin-bottom:10px;}
+  .group-title{font-size:12.5px;font-weight:700;color:var(--navy);
+    background:#EEF1F6;padding:7px 10px;border-radius:8px 8px 0 0;}
+  .item-row{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 10px;border-bottom:1px solid var(--border);background:var(--card);font-size:13px;}
+  .item-row:last-child{border-radius:0 0 8px 8px;}
+  .item-row .iname{flex:1;}
+  .item-row .badges{display:flex;align-items:center;gap:6px;flex:none;}
+  .lv-badge{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#fff;}
+  .sd-badge{font-size:10.5px;padding:2px 6px;border-radius:6px;font-weight:600;}
+  .sd-yes{background:var(--green);color:#fff;}
+  .v-instr-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 4px;border-top:1px solid var(--border);}
+  .v-instr-row:first-of-type{border-top:none;}
+  .v-instr-main{flex:1;min-width:0;}
+  .v-instr-name{font-size:14px;font-weight:700;color:var(--text);}
+  .v-instr-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .v-instr-badges{display:flex;align-items:center;gap:8px;flex:none;}
+  .v-instr-tags{display:flex;flex-wrap:wrap;gap:6px;}
+  .v-instr-tag{background:#EEF1F6;color:var(--navy);font-size:12px;font-weight:600;
+    padding:5px 10px;border-radius:8px;}
+  .v-dist-row{display:flex;align-items:center;gap:8px;padding:6px 0;}
+  .v-dist-label{flex:none;width:32px;font-size:12px;font-weight:700;color:var(--navy);}
+  .v-dist-bar-wrap{flex:1;height:16px;background:#EEF1F6;border-radius:6px;overflow:hidden;}
+  .v-dist-bar{height:100%;border-radius:6px;transition:width .2s ease;}
+  .v-dist-count{flex:none;width:44px;text-align:right;font-size:12px;color:var(--text-muted);}
+  .v-memo-textarea{width:100%;min-height:80px;padding:10px;border:1.5px solid var(--border);
+    border-radius:9px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;
+    background:#FAFBFC;color:var(--text);}
+  .v-admin-add-btn{width:100%;padding:10px 0;border:none;border-radius:10px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:13.5px;cursor:pointer;}
+  .v-admin-add-btn:active{background:var(--navy-2);}
+  .sd-no{background:#EEF1F6;color:var(--text-muted);}
+  .remarks-line{font-size:11.5px;color:var(--text-muted);padding:0 10px 8px;background:var(--card);
+    margin-top:-1px;}
+  .empty-note{font-size:12px;color:var(--text-muted);padding:20px 4px;text-align:center;}
+  .v-search-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:15px;background:#FAFBFC;color:var(--text);box-sizing:border-box;}
+  .v-search-input:focus{outline:2px solid var(--navy-2);outline-offset:1px;}
+  .v-sort-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .v-sort-row label{font-size:11.5px;color:var(--text-muted);flex:none;}
+  .v-sort-select{flex:1;padding:7px 8px;border:1.5px solid var(--border);border-radius:9px;
+    font-size:12.5px;background:#FAFBFC;color:var(--text);}
+  .v-compare-btn{width:100%;margin-top:8px;padding:9px 0;border:1.5px solid var(--navy);border-radius:9px;
+    background:#EEF1F6;color:var(--navy);font-weight:700;font-size:13px;cursor:pointer;}
+  .v-compare-btn:active{background:#E3E7EE;}
+  .v-header-settings-btn{margin-top:10px;padding:6px 10px;border:1px solid rgba(255,255,255,.4);
+    border-radius:8px;background:rgba(255,255,255,.12);color:#fff;font-size:11.5px;cursor:pointer;}
+  .v-settings-card{margin:12px 12px 0;max-width:496px;margin-left:auto;margin-right:auto;}
+  .v-admin-link{width:100%;background:none;border:none;padding:4px 0;font-size:12.5px;
+    color:var(--text-muted);text-align:left;cursor:pointer;}
+  .v-admin-msg{font-size:12px;margin-top:8px;min-height:16px;}
+  .v-admin-msg.ok{color:var(--green);}
+  .v-admin-msg.err{color:#C0392B;}
+  .v-pdf-btn{flex:none;padding:8px 14px;border:1.5px solid var(--navy);border-radius:9px;
+    background:#fff;color:var(--navy);font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;}
+  .v-pdf-btn:active{background:#EEF1F6;}
+  table.v-table.v-cmp-table{table-layout:auto;}
+  table.v-cmp-table th, table.v-cmp-table td{white-space:nowrap;padding:7px 10px;}
+  .v-cmp-name{font-weight:700;color:var(--text);position:sticky;left:0;background:var(--card);}
+  .v-cmp-total{font-weight:800;color:var(--navy);background:#F7F9FC;}
+  .v-cmp-cell{color:var(--text-muted);}
+  .v-heatmap-legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .v-heatmap-legend-chip{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;white-space:nowrap;}
+
+  /* 教育状況カードのカラーテーマ */
+  .proc-theme-card{background:linear-gradient(135deg, var(--pc-a), var(--pc-b));color:#fff;}
+  .proc-theme-hd{display:flex;align-items:center;gap:12px;margin:12px 0 8px;}
+  .proc-icon{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.22);
+    display:flex;align-items:center;justify-content:center;font-size:19px;flex:none;}
+  .proc-name{font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.15);}
+  .proc-meta{font-size:12px;color:rgba(255,255,255,.9);margin-top:2px;}
+  .proc-bar-wrap{height:7px;background:rgba(255,255,255,.28);border-radius:4px;overflow:hidden;margin-top:8px;}
+  .proc-bar{height:100%;background:#fff;border-radius:4px;transition:width .2s ease;}
+  .proc-theme-card .gd-nav-btn{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.32);color:#fff;}
+  .proc-theme-card .gd-page{color:rgba(255,255,255,.88);}
+  .proc-theme-card .v-search-input{background:rgba(255,255,255,.92);border-color:transparent;}
+  .gd-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .gd-nav-btn{flex:none;padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;
+    background:#FAFBFC;font-size:12.5px;font-weight:700;color:var(--navy);cursor:pointer;}
+  .gd-nav-btn:disabled{opacity:.35;cursor:default;}
+  .gd-page{font-size:12px;color:var(--text-muted);font-weight:700;}
+  .v-cmp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    flex-wrap:wrap;margin-bottom:10px;}
+  .v-cmp-head h2{margin:0;}
+  .v-table-wrap{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;margin-bottom:14px;}
+  table.v-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+  table.v-table thead th{background:var(--navy);color:#fff;padding:8px 6px;font-size:10.5px;
+    text-align:left;font-weight:700;}
+  table.v-table thead th.v-c{text-align:center;}
+  table.v-table col.v-col-no{width:9%;}
+  table.v-table col.v-col-item{width:24%;}
+  table.v-table col.v-col-lv{width:10%;}
+  table.v-table col.v-col-sd{width:14%;}
+  table.v-table col.v-col-bar{width:18%;}
+  table.v-table col.v-col-remarks{width:25%;}
+  table.v-table td{padding:7px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.v-table tr.v-group-row td{background:#EEF1F6;color:var(--navy);font-weight:700;font-size:11.5px;
+    padding:6px 8px;}
+  table.v-table td.v-c{text-align:center;}
+  table.v-table td.v-lv{font-weight:800;}
+  table.v-table td.v-bar{font-family:"DejaVu Sans Mono","SF Mono",monospace;letter-spacing:1px;
+    color:var(--navy);font-size:12px;white-space:nowrap;}
+  table.v-table td.v-remarks{color:var(--text-muted);font-size:11px;max-width:110px;
+    white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.5;}
+
+  .v-radar-legend{display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin-top:8px;
+    padding-top:10px;border-top:1px solid var(--border);}
+  .v-radar-legend-row{display:flex;justify-content:space-between;align-items:baseline;
+    padding:3px 2px;font-size:11.5px;}
+  .v-radar-legend-name{color:var(--text-muted);}
+  .v-radar-legend-val{font-weight:700;color:var(--navy);}
+
+  #lockScreen{
+    position:fixed;inset:0;z-index:200;background:var(--navy);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  #lockScreen .box{background:#fff;border-radius:16px;padding:26px 22px;max-width:320px;width:100%;
+    box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  #lockScreen h2{margin:0 0 6px;font-size:16px;color:var(--navy);}
+  #lockScreen p{margin:0 0 16px;font-size:12.5px;color:var(--text-muted);}
+  #lockScreen input{width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:16px;text-align:center;letter-spacing:.05em;margin-bottom:10px;}
+  #lockScreen button{width:100%;padding:12px;border:none;border-radius:10px;background:var(--navy);
+    color:#fff;font-weight:700;font-size:14.5px;cursor:pointer;}
+  #lockScreen .err{color:#C0392B;font-size:12px;margin-top:8px;display:none;}
+  #appRoot{display:block;}
+</style>
+</head>
+<body>
+
+<div class="demo-banner">🔎 これはショーケース版です。表示されているのは全てサンプルデータで、実際の従業員データではありません。</div>
+
+<div id="appRoot">
+<header class="top">
+  <h1>スキルチェック閲覧（ショーケース版）</h1>
+  <div class="sub">最新機能をサンプルデータでお試しいただけます</div>
+</header>
+
+<main id="mainArea">
+  <div id="listPane"><div class="loading">読み込み中...</div></div>
+  <div id="detailPane"><div class="card"><div class="empty-note">👈 左の一覧から人を選んでください</div></div></div>
+</main>
+</div>
+
+<script>
+// ショーケース版: 実際のApps Scriptには一切接続しません。全てこのファイルの中で作った
+// サンプルデータだけで動作します(保存や編集をしても、どこにも送信されません)。
+const SHEET_WEBAPP_URL = '';
+
+let GROUP_ORDER = [
+  "2F新カートナー","旧カートナー","プラスチベース","新ライン","旧ライン",
+  "手作業","選別工程","STP工程","給袋工程","ピロー","PTP工程",
+];
+
+const GROUPS_FOR_SHOWCASE = [
+  ["2F新カートナー", ["供給","仕上げ","機械操作","型替え","指図記入"]],
+  ["旧カートナー", ["供給","仕上げ","機械操作","型替え","指図記入"]],
+  ["プラスチベース", ["作業","OP","ラベル巻き","キャップ出し","シュリンク","充填","包装","指図記入"]],
+  ["新ライン", ["充填OP","ビン検品工程","仕上げ","機械操作","型替え・品種切り替え","瓶出し","指図記入"]],
+  ["旧ライン", ["充填OP","ラベル機","型替え・品種切り替え","指図記入"]],
+  ["手作業", ["回転盤","シュリンク","糊付け","仕上げ","ロット押し","指図記入"]],
+  ["選別工程", ["選別機1号機","選別機2号機","選別機3号機","選別機4号機","厚み選別機","目視選別機(金属探知機含む)","カプセル選別(ルミナー含む)","指図記入"]],
+  ["STP工程", ["STP2","STP3","指図記入"]],
+  ["給袋工程", ["仕上げ","OP","指図記入"]],
+  ["ピロー", ["供給","機械操作","指図記入"]],
+  ["PTP工程", ["検品","機械操作","指図記入"]],
+];
+
+let ROSTER = [];
+let MEMOS = {};
+
+function lvColor(lv){
+  if(lv === null || lv === undefined || lv === "") return "#C9CDD4";
+  const n = Number(lv);
+  const stops = ["#B0B4BA","#C9C267","#E0C24C","#8FBF6B","#2F8F5B"];
+  return stops[Math.max(0, Math.min(4, n))];
+}
+
+let PEOPLE = [];
+
+function mulberry32(seed){
+  let a = seed;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function tsDaysAgo(days){
+  const d = new Date(Date.now() - days*24*60*60*1000);
+  return d.toISOString().slice(0,19).replace('T',' ');
+}
+
+// 要再評価・ヒートマップ・教育状況など、最新機能がひと通り見えるようにバラけたサンプルを作る
+function generateShowcasePeople(){
+  const demoPeople = [
+    { name: "山田 太郎", line: "新ライン", hire: "2018-04-01", level: 3.2, seed: 1, daysAgo: 8 },
+    { name: "佐藤 花子", line: "プラスチベース", hire: "2021-09-15", level: 2.1, seed: 2, daysAgo: 130 },
+    { name: "鈴木 一郎", line: "選別工程", hire: "2015-06-01", level: 3.7, seed: 3, daysAgo: 20 },
+    { name: "田中 美咲", line: "手作業", hire: "2023-01-10", level: 1.3, seed: 4, daysAgo: 3 },
+    { name: "高橋 健太", line: "旧ライン", hire: "2019-11-20", level: 2.6, seed: 5, daysAgo: 210 },
+    { name: "伊藤 さくら", line: "新ライン", hire: "2022-04-01", level: 1.9, seed: 6, daysAgo: 45 },
+    { name: "渡辺 大輔", line: "STP工程", hire: "2017-08-01", level: 3.9, seed: 7, daysAgo: 15 },
+    { name: "中村 optional".replace('optional','陽菜'), line: "給袋工程", hire: "2024-02-01", level: 0.8, seed: 8, daysAgo: 2 },
+  ];
+
+  return demoPeople.map(dp=>{
+    const rand = mulberry32(dp.seed * 9973);
+    const rows = [];
+    let first = true;
+    const ts = tsDaysAgo(dp.daysAgo);
+    GROUPS_FOR_SHOWCASE.forEach(([group, items])=>{
+      items.forEach(item=>{
+        const jitter = (rand() - 0.5) * 2.2;
+        let lv = Math.round(dp.level + jitter);
+        lv = Math.max(0, Math.min(4, lv));
+        const sd = (lv >= 3 && rand() > 0.4) ? '有' : '無';
+        rows.push({
+          ts: first ? ts : '',
+          line: first ? dp.line : '',
+          date: first ? ts.slice(0,10) : '',
+          group, item, lv, sd, remarks: '',
+          hire: first ? dp.hire : '',
+        });
+        first = false;
+      });
+    });
+    return { name: dp.name, rows };
+  });
+}
+
+function loadData(){
+  PEOPLE = generateShowcasePeople();
+  // 名簿には「未提出者」も1名混ぜておき、未提出者一覧のショーケース表示ができるようにする
+  ROSTER = PEOPLE.map(p=>p.name).concat(['岡本 真由']);
+  MEMOS = {};
+  EDU_SHOWCASE_DATA = buildShowcaseEduData();
+  renderList();
+}
+
+// ---- 教育状況カード用のサンプルデータ -------------------------------------
+const EDU_GROUPS_FOR_SHOWCASE = [
+  { name: "準備作業", skills: [
+    { name: "身支度・入室準備", items: ["手洗い・消毒","作業着・帽子の着用確認"] },
+    { name: "道具・資材確認", items: ["工具の数量確認"] },
+  ]},
+  { name: "機械の立ち上げ", skills: [
+    { name: "起動前点検", items: ["異音・異常有無の確認","安全カバーの確認"] },
+  ]},
+  { name: "充填作業", skills: [
+    { name: "充填設定", items: ["充填量の設定"] },
+    { name: "充填中の監視", items: ["液漏れ確認"] },
+  ]},
+  { name: "検品作業", skills: [
+    { name: "外観検査", items: ["キャップ締まり確認","ラベル貼付位置確認"] },
+  ]},
+  { name: "トラブル対応", skills: [
+    { name: "異常停止対応", items: ["非常停止ボタンの位置確認","停止原因の一次切り分け","再起動前の安全確認"] },
+    { name: "異物混入対応", items: ["ラインの一時停止手順","不良品の隔離方法","報告書の記入"] },
+    { name: "機械故障対応", items: ["エラーコードの確認方法","応急処置の可否判断","保全担当への連絡手順"] },
+    { name: "停電・設備トラブル", items: ["復電後の点検手順","製品ロスの記録方法"] },
+    { name: "品質クレーム対応", items: ["該当ロットの特定方法","保管サンプルの確認","上長への一次報告"] },
+    { name: "人身事故対応", items: ["応急手当の基本","緊急連絡網の使用方法","事故報告書の作成"] },
+    { name: "報告・連絡・相談", items: ["誰に・いつ報告するか","記録に残すべき内容","再発防止の考え方"] },
+  ]},
+];
+const EDU_TRAINERS = ["吉井蓮","川内育子","福本保広"];
+
+// 工程名から見た目の色とアイコンを決める（education.html側と同じロジック）
+const PROC_COLORS = [
+  {a:'#2E5C8A', b:'#5B87BE'}, {a:'#2E8A6B', b:'#54B096'}, {a:'#8A6B2E', b:'#C0993F'},
+  {a:'#8A2E6B', b:'#C154A0'}, {a:'#5C2E8A', b:'#9159C4'}, {a:'#2E748A', b:'#57A6C4'},
+  {a:'#8A3E2E', b:'#C0633F'}, {a:'#3E8A2E', b:'#68C154'}, {a:'#8A2E3E', b:'#C1546B'},
+  {a:'#6B5C2E', b:'#A38F4A'},
+];
+const PROC_ICONS = ['⚙️','🔧','📦','🔍','🧴','🧹','🏁','🚨','🛠️','📋','⚡','🧪','🔩','📐','🎯','🧯','🧰','🚿'];
+function hashStr(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))|0; } return Math.abs(h); }
+function colorForProc(name){ return PROC_COLORS[hashStr(name) % PROC_COLORS.length]; }
+function iconForProc(name){ return PROC_ICONS[hashStr(name) % PROC_ICONS.length]; }
+
+function buildShowcaseEduData(){
+  const out = {};
+  PEOPLE.forEach((p, pi)=>{
+    const rand = mulberry32((pi+1) * 7919);
+    const current = {};
+    const bias = 0.35 + (pi % 4) * 0.18; // 人によって進み具合を変える
+    let lastDate = '', lastTrainer = '';
+    EDU_GROUPS_FOR_SHOWCASE.forEach(g=>{
+      g.skills.forEach(s=>{
+        s.items.forEach(it=>{
+          if(rand() > bias) return; // まだ教育記録が無い項目もある、という自然さを出す
+          const lv = Math.min(4, Math.floor(rand()*5));
+          const selfLv = Math.max(0, Math.min(4, lv + (Math.floor(rand()*3)-1))); // 本人評価は担当者評価から少しズレる
+          const key = g.name+'|||'+s.name+'|||'+it;
+          current[key] = { group: g.name, skill: s.name, item: it, lv, selfLv, remarks: '' };
+          lastDate = tsDaysAgo(Math.floor(rand()*60)).slice(0,10);
+          lastTrainer = EDU_TRAINERS[Math.floor(rand()*EDU_TRAINERS.length)];
+        });
+      });
+    });
+    out[p.name] = {
+      current,
+      history: lastDate ? [{ date: lastDate, trainer: lastTrainer }] : [],
+    };
+  });
+  return out;
+}
+let EDU_SHOWCASE_DATA = {};
+
+function latestBlock(rows){
+  // 記録日時が入っている行を境目として、一番最後のブロックだけを取り出す
+  let lastStart = 0;
+  rows.forEach((r, i)=>{ if(r.ts) lastStart = i; });
+  return rows.slice(lastStart);
+}
+
+// 再評価の目安となる期間（日数）。3ヶ月 = 約90日。
+const REEVAL_DAYS = 90;
+
+// 「YYYY-MM-DD HH:mm:ss」等のtsから、今日までの経過日数を計算する
+function daysSince(tsStr){
+  if(!tsStr) return null;
+  const d = new Date(tsStr.replace(' ', 'T'));
+  if(isNaN(d.getTime())) return null;
+  const diffMs = Date.now() - d.getTime();
+  return Math.floor(diffMs / (1000*60*60*24));
+}
+
+// 1人分のrowsから「最後に提出した記録日時」を取り出す
+function lastSubmittedTs(rows){
+  let ts = '';
+  rows.forEach(r=>{ if(r.ts) ts = r.ts; });
+  return ts;
+}
+
+// 記録日時を境目に、全ての提出回を分割して返す(古い順)
+function allBlocks(rows){
+  const blocks = [];
+  let current = [];
+  rows.forEach(r=>{
+    if(r.ts && current.length){
+      blocks.push(current);
+      current = [r];
+    } else {
+      current.push(r);
+    }
+  });
+  if(current.length) blocks.push(current);
+  return blocks;
+}
+
+function avgLv(rows){
+  const vals = rows.filter(r=>r.lv !== null && r.lv !== "").map(r=>Number(r.lv));
+  if(!vals.length) return null;
+  return (vals.reduce((a,b)=>a+b,0) / vals.length).toFixed(2);
+}
+
+let LIST_SEARCH_TERM = '';
+let LIST_SORT_KEY = 'name'; // 'name' | 'avg' | 'tenure'
+let LIST_SORT_DIR = 'asc';
+
+function renderList(){
+  document.getElementById('mainArea').classList.remove('detail-active');
+  document.getElementById('mainArea').classList.remove('compare-full');
+  const main = document.getElementById('listPane');
+  if(!PEOPLE.length){
+    main.innerHTML = `<div class="card"><div class="empty-note">まだ提出データがありません</div></div>`;
+    return;
+  }
+
+  // 検索欄はここで一度だけ作る。以後は壊さない(日本語入力の変換が毎回中断されるのを防ぐため)
+  main.innerHTML = `
+    <div class="card" style="margin-bottom:10px;">
+      <input type="text" id="listSearchInput" class="v-search-input" placeholder="🔍 氏名・所属ラインで検索" autocomplete="off">
+      <div class="v-sort-row">
+        <label for="listSortSelect">並び替え</label>
+        <select id="listSortSelect" class="v-sort-select">
+          <option value="name">氏名順</option>
+          <option value="avg">総合平均が低い順</option>
+          <option value="avg_desc">総合平均が高い順</option>
+          <option value="tenure">社歴が短い順</option>
+          <option value="tenure_desc">社歴が長い順</option>
+        </select>
+      </div>
+      <button id="compareBtn" class="v-compare-btn">📊 全員を比較する</button>
+      <button id="heatmapBtn" class="v-compare-btn">🗺️ ヒートマップで見る</button>
+      <button id="instructorSearchBtn" class="v-compare-btn">🧑‍🏫 指導できる人を探す</button>
+      <button id="distributionBtn" class="v-compare-btn">📈 項目ごとの分布を見る</button>
+      <button id="rosterBtn" class="v-compare-btn">📋 未提出・要再評価を確認する</button>
+    </div>
+    <div id="listResults"></div>`;
+
+  document.getElementById('compareBtn').addEventListener('click', renderCompare);
+  document.getElementById('heatmapBtn').addEventListener('click', renderHeatmap);
+  document.getElementById('distributionBtn').addEventListener('click', renderDistribution);
+  document.getElementById('rosterBtn').addEventListener('click', renderRoster);
+  document.getElementById('instructorSearchBtn').addEventListener('click', renderInstructorSearch);
+  updateCompareBtnLabel();
+
+  const searchInput = document.getElementById('listSearchInput');
+  searchInput.value = LIST_SEARCH_TERM;
+  searchInput.addEventListener('input', ()=>{
+    LIST_SEARCH_TERM = searchInput.value;
+    renderListResults();
+  });
+
+  const sortSelect = document.getElementById('listSortSelect');
+  sortSelect.value = LIST_SORT_KEY + (LIST_SORT_DIR==='desc' && LIST_SORT_KEY!=='name' ? '_desc' : '');
+  sortSelect.addEventListener('change', ()=>{
+    const v = sortSelect.value;
+    if(v.endsWith('_desc')){ LIST_SORT_KEY = v.replace('_desc',''); LIST_SORT_DIR = 'desc'; }
+    else { LIST_SORT_KEY = v; LIST_SORT_DIR = 'asc'; }
+    renderListResults();
+  });
+
+  renderListResults();
+}
+
+let SELECTED_PEOPLE = new Set();
+
+function renderListResults(){
+  const resultsEl = document.getElementById('listResults');
+  if(!resultsEl) return;
+
+  const term = LIST_SEARCH_TERM.trim();
+  let filtered = PEOPLE
+    .map((p, idx)=>({p, idx}))
+    .filter(({p})=>{
+      if(!term) return true;
+      const block = latestBlock(p.rows);
+      const line = block[0] ? (block[0].line || '') : '';
+      return p.name.includes(term) || line.includes(term);
+    });
+
+  // 並び替え
+  const tenureYears = (p)=>{
+    const block = latestBlock(p.rows);
+    const hire = block[0] ? block[0].hire : '';
+    if(!hire) return null;
+    const d = new Date(hire + 'T00:00:00');
+    if(isNaN(d.getTime())) return null;
+    return (new Date() - d) / (1000*60*60*24*365);
+  };
+  const avgVal = (p)=>{ const v = avgLv(latestBlock(p.rows)); return v===null ? -1 : Number(v); };
+
+  filtered.sort((a,b)=>{
+    let av, bv;
+    if(LIST_SORT_KEY === 'avg'){ av = avgVal(a.p); bv = avgVal(b.p); }
+    else if(LIST_SORT_KEY === 'tenure'){ av = tenureYears(a.p); av = av===null?-1:av; bv = tenureYears(b.p); bv = bv===null?-1:bv; }
+    else { return LIST_SORT_DIR==='desc' ? b.p.name.localeCompare(a.p.name,'ja') : a.p.name.localeCompare(b.p.name,'ja'); }
+    return LIST_SORT_DIR==='desc' ? (bv-av) : (av-bv);
+  });
+
+  const rowsHtml = filtered.map(({p, idx})=>{
+    const block = latestBlock(p.rows);
+    const avg = avgLv(block);
+    const date = block[0] && block[0].date ? block[0].date : '';
+    const tenureText = block[0] ? calcTenureText(block[0].hire) : '';
+    const checked = SELECTED_PEOPLE.has(idx) ? 'checked' : '';
+    return `
+      <div class="person-row" data-idx="${idx}">
+        <input type="checkbox" class="v-select-box" data-idx="${idx}" ${checked}>
+        <div style="flex:1;min-width:0;">
+          <div class="n">${MEMOS[p.name] && MEMOS[p.name].flag ? '🚩 ' : ''}${p.name}</div>
+          <div class="d">${date || '日付未記入'}${tenureText ? '　'+tenureText : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;">
+          <div class="avg num">${avg === null ? '-' : avg}</div>
+          <div class="chev"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const listBody = filtered.length
+    ? rowsHtml
+    : `<div class="empty-note">「${escapeHtml(term)}」に一致する人がいません</div>`;
+
+  resultsEl.innerHTML = `<div class="card"><h2>提出済み一覧（${filtered.length}${term ? ' / '+PEOPLE.length : ''}人）</h2>${listBody}</div>`;
+
+  resultsEl.querySelectorAll('.v-select-box').forEach(cb=>{
+    cb.addEventListener('click', e=> e.stopPropagation());
+    cb.addEventListener('change', ()=>{
+      const idx = Number(cb.dataset.idx);
+      if(cb.checked) SELECTED_PEOPLE.add(idx); else SELECTED_PEOPLE.delete(idx);
+      updateCompareBtnLabel();
+    });
+  });
+  resultsEl.querySelectorAll('.person-row').forEach(el=>{
+    el.addEventListener('click', ()=> renderDetail(Number(el.dataset.idx)));
+  });
+}
+
+function vBar(lv){
+  if(lv === null || lv === "" || lv === undefined) return '';
+  const n = Math.max(0, Math.min(4, Number(lv)));
+  return '■'.repeat(n) + '□'.repeat(4-n);
+}
+
+function buildRadarSvg(groups, byGroup){
+  const cx = 170, cy = 158, R = 100;
+  const n = groups.length;
+  const angleFor = i => (-90 + i * (360/n)) * Math.PI/180;
+  const pt = (i, r) => [cx + r*Math.cos(angleFor(i)), cy + r*Math.sin(angleFor(i))];
+
+  // グリッド(Lv 1〜4の同心多角形) + 目盛り数値(上方向の軸に表示)
+  let gridPolys = '';
+  let scaleLabels = '';
+  for(let lv=1; lv<=4; lv++){
+    const r = R * (lv/4);
+    const pts = groups.map((g,i)=> pt(i, r).join(',')).join(' ');
+    gridPolys += `<polygon points="${pts}" fill="none" stroke="#D9DCE3" stroke-width="1"/>`;
+    scaleLabels += `<text x="${cx+4}" y="${cy - r}" font-size="8" fill="#9AA1AC">${lv.toFixed(1)}</text>`;
+  }
+  // 軸線
+  let axisLines = '';
+  groups.forEach((g,i)=>{
+    const [x,y] = pt(i, R);
+    axisLines += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#E1E4EA" stroke-width="1"/>`;
+  });
+  // データ多角形
+  const avgList = groups.map(g=>{
+    const vals = (byGroup[g]||[]).filter(r=>r.lv!==null && r.lv!=="").map(r=>Number(r.lv));
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+  });
+  const dataPts = groups.map((g,i)=> pt(i, R*(avgList[i]/4)));
+  const dataPolyStr = dataPts.map(p=>p.join(',')).join(' ');
+  let dots = '';
+  groups.forEach((g,i)=>{
+    const [x,y] = dataPts[i];
+    dots += `<circle cx="${x}" cy="${y}" r="2.6" fill="#1F3864"/>`;
+  });
+  // ラベル(工程名のみ、数値はチャート下の一覧に分離)
+  let labels = '';
+  groups.forEach((g,i)=>{
+    const [x,y] = pt(i, R + 24);
+    const angleDeg = (-90 + i * (360/n));
+    let anchor = 'middle';
+    if(angleDeg < -100 || angleDeg > 100) anchor = 'end';
+    else if(angleDeg > -80 && angleDeg < 80 && Math.abs(angleDeg) > 15) anchor = 'start';
+    labels += `<text x="${x}" y="${y}" font-size="9" fill="#1C2430" text-anchor="${anchor}" dominant-baseline="middle">${escapeHtml(g)}</text>`;
+  });
+
+  const svg = `
+    <svg viewBox="0 0 340 336" width="100%" style="max-width:340px;display:block;margin:0 auto;">
+      ${gridPolys}
+      ${axisLines}
+      <polygon points="${dataPolyStr}" fill="#3C7AC7" fill-opacity="0.35" stroke="#1F3864" stroke-width="2"/>
+      ${dots}
+      ${labels}
+      ${scaleLabels}
+    </svg>`;
+
+  const legendRows = groups.map((g,i)=>`
+    <div class="v-radar-legend-row">
+      <span class="v-radar-legend-name">${escapeHtml(g)}</span>
+      <span class="v-radar-legend-val num">${avgList[i].toFixed(2)}</span>
+    </div>`).join('');
+  const legend = `<div class="v-radar-legend">${legendRows}</div>`;
+
+  return svg + legend;
+}
+
+function calcTenureText(hireDateStr){
+  if(!hireDateStr) return '';
+  const hire = new Date(hireDateStr + 'T00:00:00');
+  if(isNaN(hire.getTime())) return '';
+  const today = new Date();
+  const years = Math.floor(((today - hire) / (1000*60*60*24*365)) * 10) / 10;
+  if(years < 0) return '';
+  return '社歴' + years.toFixed(1) + '年';
+}
+
+function updateCompareBtnLabel(){
+  const btn = document.getElementById('compareBtn');
+  if(!btn) return;
+  btn.textContent = SELECTED_PEOPLE.size > 0
+    ? `📊 選択した${SELECTED_PEOPLE.size}人を比較する`
+    : '📊 全員を比較する';
+}
+
+function renderInstructorSearch(){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.remove('compare-full');
+  const main = document.getElementById('detailPane');
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <h2>🧑‍🏫 指導できる人を探す</h2>
+      <div class="setup-note" style="margin-bottom:10px;">工程名・スキル項目名の一部を入力してください（例: 新ライン、充填、機械操作 など）</div>
+      <input type="text" id="instructorSearchInput" class="v-search-input" placeholder="🔍 工程名・項目名で検索" autocomplete="off">
+    </div>
+    <div id="instructorResults"></div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', renderList);
+
+  const input = document.getElementById('instructorSearchInput');
+  const runSearch = ()=>{
+    const term = input.value.trim();
+    const resultsEl = document.getElementById('instructorResults');
+    if(!term){ resultsEl.innerHTML = ''; return; }
+
+    const hits = [];
+    PEOPLE.forEach(p=>{
+      const block = latestBlock(p.rows);
+      block.forEach(r=>{
+        if(r.sd === '有' && ((r.item && r.item.includes(term)) || (r.group && r.group.includes(term)))){
+          hits.push({ name: p.name, group: r.group, item: r.item, lv: r.lv });
+        }
+      });
+    });
+
+    if(!hits.length){
+      resultsEl.innerHTML = `<div class="card"><div class="empty-note">「${escapeHtml(term)}」で指導経験のある人は見つかりませんでした</div></div>`;
+      return;
+    }
+    const rows = hits.map(h=>`
+      <div class="v-instr-row">
+        <div class="v-instr-main">
+          <div class="v-instr-name">${escapeHtml(h.name)}</div>
+          <div class="v-instr-sub">${escapeHtml(h.group)} ／ ${escapeHtml(h.item)}</div>
+        </div>
+        <div class="v-instr-badges">
+          <div class="lv-badge num" style="background:${lvColor(h.lv)}">${h.lv===null?'-':h.lv}</div>
+          <div class="sd-badge sd-yes">指導 有</div>
+        </div>
+      </div>`).join('');
+    resultsEl.innerHTML = `<div class="card"><h2>該当 ${hits.length} 件</h2>${rows}</div>`;
+  };
+  input.addEventListener('input', runSearch);
+}
+
+function downloadCsv(filename, rows){
+  const csv = rows.map(row=>row.map(cell=>{
+    const s = String(cell ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(',')).join('\r\n');
+  const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function renderDistribution(){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.remove('compare-full');
+  const main = document.getElementById('detailPane');
+
+  const groupOptions = GROUP_ORDER.map(g=>`<option value="${escapeAttr(g)}">${g}</option>`).join('');
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <h2>📈 項目ごとの分布を見る</h2>
+      <div class="setup-note" style="margin-bottom:10px;">工程とスキル項目を選ぶと、全員のLv分布が見れます</div>
+      <select id="distGroupSelect" class="v-sort-select" style="margin-bottom:8px;">${groupOptions}</select>
+      <select id="distItemSelect" class="v-sort-select"></select>
+    </div>
+    <div id="distResults"></div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', renderList);
+
+  // 全データから 工程→項目一覧 を集める
+  const itemsByGroup = {};
+  PEOPLE.forEach(p=>{
+    latestBlock(p.rows).forEach(r=>{
+      if(!itemsByGroup[r.group]) itemsByGroup[r.group] = new Set();
+      itemsByGroup[r.group].add(r.item);
+    });
+  });
+
+  const groupSelect = document.getElementById('distGroupSelect');
+  const itemSelect = document.getElementById('distItemSelect');
+
+  const populateItems = ()=>{
+    const items = [...(itemsByGroup[groupSelect.value] || [])];
+    itemSelect.innerHTML = items.map(it=>`<option value="${escapeAttr(it)}">${it}</option>`).join('');
+    runDistribution();
+  };
+
+  const runDistribution = ()=>{
+    const g = groupSelect.value, it = itemSelect.value;
+    const counts = [0,0,0,0,0];
+    let none = 0;
+    PEOPLE.forEach(p=>{
+      const block = latestBlock(p.rows);
+      const row = block.find(r=>r.group===g && r.item===it);
+      if(!row || row.lv===null || row.lv==="") { none++; return; }
+      const lv = Math.max(0, Math.min(4, Number(row.lv)));
+      counts[lv]++;
+    });
+    const maxCount = Math.max(1, ...counts);
+    const barsHtml = counts.map((c,lv)=>`
+      <div class="v-dist-row">
+        <div class="v-dist-label num">Lv${lv}</div>
+        <div class="v-dist-bar-wrap"><div class="v-dist-bar" style="width:${(c/maxCount*100)}%;background:${lvColor(lv)};"></div></div>
+        <div class="v-dist-count num">${c}人</div>
+      </div>`).join('');
+    document.getElementById('distResults').innerHTML = `
+      <div class="card">
+        <h2>${escapeHtml(g)} ／ ${escapeHtml(it)}</h2>
+        ${barsHtml}
+        ${none ? `<div class="setup-note" style="margin-top:10px;">未入力: ${none}人</div>` : ''}
+      </div>`;
+  };
+
+  groupSelect.addEventListener('change', populateItems);
+  itemSelect.addEventListener('change', runDistribution);
+  populateItems();
+}
+
+function renderRoster(){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.remove('compare-full');
+  const main = document.getElementById('detailPane');
+
+  const submittedNames = new Set(PEOPLE.map(p=>p.name));
+  const notSubmitted = ROSTER.filter(n=>!submittedNames.has(n));
+
+  // 提出済みの人のうち、最後の提出から REEVAL_DAYS 日以上経っている人を「要再評価」とする
+  const expired = PEOPLE
+    .map(p=>{
+      const ts = lastSubmittedTs(p.rows);
+      const days = daysSince(ts);
+      return { name: p.name, ts, days };
+    })
+    .filter(p=>p.days !== null && p.days >= REEVAL_DAYS)
+    .sort((a,b)=>b.days - a.days); // 経過が長い人から順に
+
+  const notSubmittedHtml = notSubmitted.length
+    ? notSubmitted.map(n=>`<div class="v-instr-tag" style="display:inline-block;margin:3px 4px 3px 0;">${escapeHtml(n)}</div>`).join('')
+    : `<div class="empty-note">${ROSTER.length ? '全員提出済みです 🎉' : '名簿が未登録です。下で登録してください'}</div>`;
+
+  const expiredHtml = expired.length
+    ? expired.map(p=>`
+        <div class="v-instr-row">
+          <div class="v-instr-main">
+            <div class="v-instr-name">${escapeHtml(p.name)}</div>
+            <div class="v-instr-sub">最終提出から ${p.days}日経過（${escapeHtml(p.ts.split(' ')[0] || p.ts)}）</div>
+          </div>
+          <div class="v-lv-badge num" style="background:#C0392B;">要再評価</div>
+        </div>`).join('')
+    : `<div class="empty-note">${REEVAL_DAYS}日以上経過している人はいません</div>`;
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <h2>⏰ 要再評価（最終提出から${REEVAL_DAYS}日以上、${expired.length}人）</h2>
+      <div class="setup-note" style="margin-bottom:8px;">3ヶ月ごとの再チェックの目安です。提出済みでも期間が空いている人はここに出ます。</div>
+      ${expiredHtml}
+    </div>
+    <div class="card">
+      <h2>📋 未提出者（${notSubmitted.length}人 / 名簿${ROSTER.length}人）</h2>
+      ${notSubmittedHtml}
+    </div>
+    <div class="card">
+      <h2>名簿を編集する</h2>
+      <div class="setup-note" style="margin-bottom:8px;">1行に1名、全従業員の氏名を入力してください（既存の内容は全て上書きされます）</div>
+      <textarea id="rosterText" class="v-memo-textarea" style="min-height:160px;" placeholder="山田太郎&#10;鈴木花子&#10;...">${ROSTER.map(escapeHtml).join('\n')}</textarea>
+      <button id="rosterSaveBtn" class="v-admin-add-btn" style="margin-top:8px;">名簿を保存する</button>
+      <div id="rosterMsg" class="v-admin-msg"></div>
+    </div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', renderList);
+  document.getElementById('rosterSaveBtn').addEventListener('click', async ()=>{
+    const msg = document.getElementById('rosterMsg');
+    const names = document.getElementById('rosterText').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(!SHEET_WEBAPP_URL){ msg.textContent = 'ショーケース版のため保存はできません（サンプルデータです）'; msg.className = 'v-admin-msg err'; return; }
+    msg.textContent = '保存中...';
+    msg.className = 'v-admin-msg';
+    try{
+      const res = await fetch(SHEET_WEBAPP_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action: 'setRoster', names }),
+      });
+      const text = await res.text();
+      const data = JSON.parse(text);
+      if(data.status === 'ok'){
+        ROSTER = data.roster || names;
+        msg.textContent = '名簿を保存しました';
+        msg.className = 'v-admin-msg ok';
+        renderRoster();
+      } else {
+        msg.textContent = data.message || '保存に失敗しました';
+        msg.className = 'v-admin-msg err';
+      }
+    }catch(e){
+      msg.textContent = '通信に失敗しました: ' + (e.message || e);
+      msg.className = 'v-admin-msg err';
+      console.error(e);
+    }
+  });
+}
+
+function renderCompare(){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.add('compare-full');
+  const main = document.getElementById('detailPane');
+
+  const targetPeople = SELECTED_PEOPLE.size > 0
+    ? PEOPLE.filter((p, idx)=> SELECTED_PEOPLE.has(idx))
+    : PEOPLE;
+
+  const groupAvgFor = (p, g)=>{
+    const block = latestBlock(p.rows);
+    const vals = block.filter(r=>r.group===g && r.lv!==null && r.lv!=="").map(r=>Number(r.lv));
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+  };
+
+  const rowsHtml = targetPeople.map(p=>{
+    const block = latestBlock(p.rows);
+    const total = avgLv(block);
+    const cells = GROUP_ORDER.map(g=>{
+      const v = groupAvgFor(p, g);
+      return `<td class="v-c v-cmp-cell">${v===null ? '-' : v.toFixed(2)}</td>`;
+    }).join('');
+    return `
+      <tr>
+        <td class="v-cmp-name">${escapeHtml(p.name)}</td>
+        <td class="v-c v-cmp-total">${total===null ? '-' : total}</td>
+        ${cells}
+      </tr>`;
+  }).join('');
+
+  const headerCells = GROUP_ORDER.map(g=>`<th class="v-c">${escapeHtml(g)}</th>`).join('');
+  const titleSuffix = SELECTED_PEOPLE.size > 0 ? `（選択した${targetPeople.length}人）` : `（全${targetPeople.length}人）`;
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <div class="v-cmp-head">
+        <h2>比較表（工程別 平均Lv）${titleSuffix}</h2>
+        <div style="display:flex;gap:8px;">
+          <button id="csvBtn" class="v-pdf-btn">📄 CSVで保存</button>
+          <button id="pdfBtn" class="v-pdf-btn">📄 PDFで保存</button>
+        </div>
+      </div>
+      <div class="v-table-wrap">
+        <table class="v-table v-cmp-table">
+          <thead>
+            <tr>
+              <th>氏名</th>
+              <th class="v-c">総合</th>
+              ${headerCells}
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', ()=>{
+    document.getElementById('mainArea').classList.remove('compare-full');
+    renderList();
+  });
+  document.getElementById('pdfBtn').addEventListener('click', ()=> window.print());
+  document.getElementById('csvBtn').addEventListener('click', ()=>{
+    const header = ['氏名','総合平均', ...GROUP_ORDER];
+    const dataRows = targetPeople.map(p=>{
+      const block = latestBlock(p.rows);
+      const total = avgLv(block);
+      const cells = GROUP_ORDER.map(g=>{
+        const v = groupAvgFor(p, g);
+        return v===null ? '' : v.toFixed(2);
+      });
+      return [p.name, total===null?'':total, ...cells];
+    });
+    downloadCsv('比較表.csv', [header, ...dataRows]);
+  });
+}
+
+// Lv 0〜4の連続値を、はっきり見分けられる信号機配色（赤→橙→黄→黄緑→緑）でグラデーションする
+function lvColorContinuous(v){
+  if(v === null || v === undefined || isNaN(v)) return { bg: '#EDEEF0', text: '#8A8F99' };
+  const stops = [[192,57,43],[230,126,34],[241,196,15],[163,199,92],[39,174,96]];
+  const clamped = Math.max(0, Math.min(4, v));
+  const lo = Math.floor(clamped);
+  const hi = Math.min(4, lo + 1);
+  const t = clamped - lo;
+  const c = stops[lo].map((c0,i)=> Math.round(c0 + (stops[hi][i]-c0)*t));
+  // 相対輝度から白文字/濃色文字のどちらが読みやすいか判定する
+  const luminance = (0.299*c[0] + 0.587*c[1] + 0.114*c[2]) / 255;
+  const text = luminance < 0.6 ? '#fff' : '#2A2E37';
+  return { bg: `rgb(${c[0]},${c[1]},${c[2]})`, text };
+}
+
+function heatmapLegendHtml(){
+  const labels = ['0 未経験','1 微妙','2 一人でできる','3 指導できる','4 熟練'];
+  return `<div class="v-heatmap-legend">${labels.map((label,i)=>{
+    const {bg,text} = lvColorContinuous(i);
+    return `<span class="v-heatmap-legend-chip" style="background:${bg};color:${text};">${label}</span>`;
+  }).join('')}</div>`;
+}
+
+function renderHeatmap(){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.add('compare-full');
+  const main = document.getElementById('detailPane');
+
+  const groupAvgFor = (p, g)=>{
+    const block = latestBlock(p.rows);
+    const vals = block.filter(r=>r.group===g && r.lv!==null && r.lv!=="").map(r=>Number(r.lv));
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+  };
+
+  // 総合平均が低い人（弱点がある人）を上に、見た瞬間に分かるように並べる
+  const sortedPeople = PEOPLE.slice().sort((a,b)=>{
+    const ta = avgLv(latestBlock(a.rows)), tb = avgLv(latestBlock(b.rows));
+    const na = ta === null ? 999 : Number(ta), nb = tb === null ? 999 : Number(tb);
+    return na - nb;
+  });
+
+  const rowsHtml = sortedPeople.map(p=>{
+    const block = latestBlock(p.rows);
+    const total = avgLv(block);
+    const cells = GROUP_ORDER.map(g=>{
+      const v = groupAvgFor(p, g);
+      const {bg, text} = lvColorContinuous(v);
+      const label = v === null ? '-' : v.toFixed(1);
+      return `<td class="v-c" style="background:${bg};color:${text};font-weight:600;">${label}</td>`;
+    }).join('');
+    return `
+      <tr>
+        <td class="v-cmp-name">${escapeHtml(p.name)}</td>
+        <td class="v-c v-cmp-total">${total===null ? '-' : total}</td>
+        ${cells}
+      </tr>`;
+  }).join('');
+
+  const headerCells = GROUP_ORDER.map(g=>`<th class="v-c">${escapeHtml(g)}</th>`).join('');
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <div class="v-cmp-head">
+        <h2>🗺️ ヒートマップ（全${sortedPeople.length}人 × 全工程）</h2>
+        <div style="display:flex;gap:8px;">
+          <button id="csvBtn" class="v-pdf-btn">📄 CSVで保存</button>
+          <button id="pdfBtn" class="v-pdf-btn">📄 PDFで保存</button>
+        </div>
+      </div>
+      <div class="setup-note" style="margin-bottom:8px;">総合平均が低い人を上から順に並べています。</div>
+      ${heatmapLegendHtml()}
+      <div class="v-table-wrap">
+        <table class="v-table v-cmp-table">
+          <thead>
+            <tr>
+              <th>氏名</th>
+              <th class="v-c">総合</th>
+              ${headerCells}
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', ()=>{
+    document.getElementById('mainArea').classList.remove('compare-full');
+    renderList();
+  });
+  document.getElementById('pdfBtn').addEventListener('click', ()=> window.print());
+  document.getElementById('csvBtn').addEventListener('click', ()=>{
+    const header = ['氏名','総合平均', ...GROUP_ORDER];
+    const dataRows = sortedPeople.map(p=>{
+      const block = latestBlock(p.rows);
+      const total = avgLv(block);
+      const cells = GROUP_ORDER.map(g=>{
+        const v = groupAvgFor(p, g);
+        return v===null ? '' : v.toFixed(2);
+      });
+      return [p.name, total===null?'':total, ...cells];
+    });
+    downloadCsv('ヒートマップ.csv', [header, ...dataRows]);
+  });
+}
+
+let DETAIL_SHOW_INCOMPLETE_ONLY = false;
+
+function buildGrowthSvg(blocks){
+  const W = 300, H = 120, padL = 30, padR = 14, padT = 14, padB = 24;
+  const points = blocks.map(b=>{
+    const d = b[0] ? (b[0].date || (b[0].ts ? b[0].ts.slice(0,10) : '')) : '';
+    const a = avgLv(b);
+    return { date: d, avg: a === null ? 0 : Number(a) };
+  });
+  const n = points.length;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const xFor = i => padL + (n<=1 ? innerW/2 : innerW * i/(n-1));
+  const yFor = v => padT + innerH - (innerH * (v/4));
+
+  let gridLines = '';
+  [0,1,2,3,4].forEach(v=>{
+    const y = yFor(v);
+    gridLines += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#E1E4EA" stroke-width="1"/>`;
+    gridLines += `<text x="${padL-6}" y="${y+3}" font-size="8" fill="#9AA1AC" text-anchor="end">${v}</text>`;
+  });
+
+  const linePts = points.map((p,i)=>`${xFor(i)},${yFor(p.avg)}`).join(' ');
+  let dots = '', labels = '';
+  points.forEach((p,i)=>{
+    const x = xFor(i), y = yFor(p.avg);
+    dots += `<circle cx="${x}" cy="${y}" r="3" fill="#1F3864"/>`;
+    labels += `<text x="${x}" y="${H-6}" font-size="7.5" fill="#9AA1AC" text-anchor="middle">${escapeHtml((p.date||'').slice(5))}</text>`;
+  });
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:400px;display:block;margin:0 auto;">
+      ${gridLines}
+      <polyline points="${linePts}" fill="none" stroke="#3C7AC7" stroke-width="2"/>
+      ${dots}
+      ${labels}
+    </svg>`;
+}
+
+function renderDetail(idx, blockIdx){
+  document.getElementById('mainArea').classList.add('detail-active');
+  document.getElementById('mainArea').classList.remove('compare-full');
+  const main = document.getElementById('detailPane');
+  const p = PEOPLE[idx];
+  const blocks = allBlocks(p.rows);
+  const chosenIdx = (blockIdx === undefined || blockIdx === null) ? blocks.length - 1 : blockIdx;
+  const block = blocks[chosenIdx] || blocks[blocks.length - 1];
+  const line = block[0] ? block[0].line : '';
+  const date = block[0] ? block[0].date : '';
+  const hire = block[0] ? block[0].hire : '';
+  const tenureText = calcTenureText(hire);
+  const avg = avgLv(block);
+  const shidoCount = block.filter(r=>r.sd === '有').length;
+
+  const byGroup = {};
+  block.forEach(r=>{
+    if(!byGroup[r.group]) byGroup[r.group] = [];
+    byGroup[r.group].push(r);
+  });
+  const groups = GROUP_ORDER.filter(g=>byGroup[g]).concat(Object.keys(byGroup).filter(g=>!GROUP_ORDER.includes(g)));
+
+  let no = 0;
+  const rowsHtml = groups.map(g=>{
+    const items = byGroup[g].filter(r=> !DETAIL_SHOW_INCOMPLETE_ONLY || r.lv===null || r.lv==="" || Number(r.lv)===0);
+    if(!items.length) return '';
+    const groupRow = `<tr class="v-group-row"><td colspan="6">${escapeHtml(g)}</td></tr>`;
+    const itemRows = items.map(r=>{
+      no++;
+      const lv = r.lv === null || r.lv === "" ? "-" : r.lv;
+      const sdClass = r.sd === "有" ? "sd-yes" : "sd-no";
+      return `
+        <tr>
+          <td class="v-c">${no}</td>
+          <td>${escapeHtml(r.item)}</td>
+          <td class="v-c v-lv" style="color:${lvColor(r.lv)}">${lv}</td>
+          <td class="v-c"><span class="sd-badge ${sdClass}">${r.sd || '無'}</span></td>
+          <td class="v-bar">${vBar(r.lv)}</td>
+          <td class="v-remarks">${r.remarks ? escapeHtml(r.remarks) : ''}</td>
+        </tr>`;
+    }).join('');
+    return groupRow + itemRows;
+  }).join('');
+
+  const historyOptions = blocks.map((b, i)=>{
+    const d = b[0] ? (b[0].date || b[0].ts.slice(0,10)) : `提出${i+1}`;
+    const label = (i === blocks.length-1) ? `${d}（最新）` : d;
+    return `<option value="${i}" ${i===chosenIdx?'selected':''}>${escapeHtml(label)}</option>`;
+  }).join('');
+  const historySelectHtml = blocks.length > 1
+    ? `<select id="historySelect" class="v-sort-select" style="margin-top:8px;">${historyOptions}</select>`
+    : '';
+
+  main.innerHTML = `
+    <div class="backbar" id="backBtn"><div class="arrow"></div><span>一覧に戻る</span></div>
+    <div class="card">
+      <div class="v-cmp-head">
+        <div class="detail-hd" style="margin-bottom:0;">
+          <div class="n">${escapeHtml(p.name)}</div>
+          <div class="meta">${escapeHtml(line) || '所属未記入'}　${date || ''}${tenureText ? '　'+tenureText : ''}</div>
+          <div class="meta" style="margin-top:4px;">総合平均レベル: <b class="num">${avg === null ? '-' : avg}</b>　　指導経験のある項目数: <b class="num">${shidoCount} / ${block.length}</b> 項目</div>
+          ${historySelectHtml}
+        </div>
+        <button id="pdfBtn" class="v-pdf-btn">📄 PDFで保存</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>工程別スキルレーダー（平均Lv）</h2>
+      ${buildRadarSvg(groups, byGroup)}
+    </div>
+    ${blocks.length > 1 ? `
+    <div class="card">
+      <h2>総合平均レベルの推移</h2>
+      ${buildGrowthSvg(blocks)}
+    </div>` : ''}
+    <div class="card" id="eduStatusCard">
+      <h2>🎓 教育状況</h2>
+      <button id="eduShowBtn" class="v-compare-btn">🎓 教育状況を表示する</button>
+    </div>
+    <div class="card">
+      <h2>🚩 管理者メモ</h2>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <input type="checkbox" id="memoFlagCheck" style="width:18px;height:18px;accent-color:#C0392B;" ${MEMOS[p.name] && MEMOS[p.name].flag ? 'checked' : ''}>
+        <label for="memoFlagCheck" style="font-size:13px;cursor:pointer;">気になる（フォローが必要）</label>
+      </div>
+      <textarea id="memoText" class="v-memo-textarea" placeholder="面談メモ・気づいたことなど">${MEMOS[p.name] ? escapeHtml(MEMOS[p.name].memo || '') : ''}</textarea>
+      <button id="memoSaveBtn" class="v-admin-add-btn" style="margin-top:8px;">メモを保存する</button>
+      <div id="memoMsg" class="v-admin-msg"></div>
+    </div>
+    <div class="card" style="display:flex;align-items:center;gap:8px;padding:12px 16px;">
+      <input type="checkbox" id="incompleteOnlyCheck" style="width:18px;height:18px;accent-color:var(--navy);" ${DETAIL_SHOW_INCOMPLETE_ONLY?'checked':''}>
+      <label for="incompleteOnlyCheck" style="font-size:13px;cursor:pointer;">未経験・Lv0の項目だけ表示する</label>
+    </div>
+    <div class="v-table-wrap">
+      <table class="v-table">
+        <colgroup>
+          <col class="v-col-no"><col class="v-col-item"><col class="v-col-lv">
+          <col class="v-col-sd"><col class="v-col-bar"><col class="v-col-remarks">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="v-c">No.</th>
+            <th>スキル項目</th>
+            <th class="v-c">Lv</th>
+            <th class="v-c">指導</th>
+            <th>達成度</th>
+            <th>備考</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">該当する項目はありません</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('backBtn').addEventListener('click', renderList);
+  document.getElementById('pdfBtn').addEventListener('click', ()=> window.print());
+  document.getElementById('incompleteOnlyCheck').addEventListener('change', (e)=>{
+    DETAIL_SHOW_INCOMPLETE_ONLY = e.target.checked;
+    renderDetail(idx, chosenIdx);
+  });
+  const historySelect = document.getElementById('historySelect');
+  if(historySelect){
+    historySelect.addEventListener('change', ()=>{
+      renderDetail(idx, Number(historySelect.value));
+    });
+  }
+  document.getElementById('memoSaveBtn').addEventListener('click', async ()=>{
+    const msg = document.getElementById('memoMsg');
+    const flag = document.getElementById('memoFlagCheck').checked;
+    const memo = document.getElementById('memoText').value;
+    if(!SHEET_WEBAPP_URL){ msg.textContent = 'ショーケース版のため保存はできません（サンプルデータです）'; msg.className = 'v-admin-msg err'; return; }
+    msg.textContent = '保存中...';
+    msg.className = 'v-admin-msg';
+    try{
+      const res = await fetch(SHEET_WEBAPP_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action: 'setMemo', name: p.name, flag, memo }),
+      });
+      const text = await res.text();
+      const data = JSON.parse(text);
+      if(data.status === 'ok'){
+        MEMOS = data.memos || MEMOS;
+        msg.textContent = 'メモを保存しました';
+        msg.className = 'v-admin-msg ok';
+      } else {
+        msg.textContent = data.message || '保存に失敗しました';
+        msg.className = 'v-admin-msg err';
+      }
+    }catch(e){
+      msg.textContent = '通信に失敗しました: ' + (e.message || e);
+      msg.className = 'v-admin-msg err';
+      console.error(e);
+    }
+  });
+  const eduShowBtn = document.getElementById('eduShowBtn');
+  if(eduShowBtn) eduShowBtn.addEventListener('click', ()=>{ loadEduStatusForDetail(p.name); });
+}
+
+// 個人詳細画面に「教育状況」を非同期で取得・表示する（education.htmlの教育記録データを流用）
+let EDU_STATUS_DATA = null; // { groupNames, byGroup, doneCount, total, lastInfo }
+let EDU_STATUS_IDX = 0;
+
+async function loadEduStatusForDetail(name){
+  const card = document.getElementById('eduStatusCard');
+  if(!card) return; // 画面がすでに切り替わっていたら何もしない
+
+  const data = EDU_SHOWCASE_DATA[name] || { current: {}, history: [] };
+  const current = data.current || {};
+  const entries = Object.values(current);
+
+  if(!entries.length){
+    card.innerHTML = `<h2>🎓 教育状況</h2><div class="empty-note">まだ教育記録がありません</div>`;
+    EDU_STATUS_DATA = null;
+    return;
+  }
+
+  const byGroup = {};
+  entries.forEach(e=>{
+    if(!byGroup[e.group]) byGroup[e.group] = {};
+    if(!byGroup[e.group][e.skill]) byGroup[e.group][e.skill] = [];
+    byGroup[e.group][e.skill].push(e);
+  });
+  const groupNames = [
+    ...GROUP_ORDER.filter(g=>byGroup[g]),
+    ...Object.keys(byGroup).filter(g=>!GROUP_ORDER.includes(g)),
+  ];
+
+  const doneCount = entries.filter(e=> e.lv !== null && Number(e.lv) >= 3).length;
+
+  let lastInfo = '';
+  if(data.history && data.history.length){
+    const last = data.history[data.history.length - 1];
+    lastInfo = `最終教育: ${escapeHtml(last.date || '')}　担当: ${escapeHtml(last.trainer || '')}`;
+  }
+
+  EDU_STATUS_DATA = { groupNames, byGroup, doneCount, total: entries.length, lastInfo, personName: name };
+  EDU_STATUS_IDX = 0;
+  renderEduStatusPage();
+}
+
+// 教育状況カードを、選ばれている工程(EDU_STATUS_IDX)だけ表示する形で描画する
+function renderEduStatusPage(){
+  const card = document.getElementById('eduStatusCard');
+  if(!card || !EDU_STATUS_DATA) return;
+  const { groupNames, byGroup, doneCount, total, lastInfo } = EDU_STATUS_DATA;
+  const idx = Math.max(0, Math.min(groupNames.length - 1, EDU_STATUS_IDX));
+  EDU_STATUS_IDX = idx;
+  const g = groupNames[idx];
+  const c = colorForProc(g);
+  const icon = iconForProc(g);
+
+  const groupItems = Object.values(byGroup[g]).flat();
+  const groupDone = groupItems.filter(e=> e.lv !== null && Number(e.lv) >= 3).length;
+  const groupPct = groupItems.length ? Math.round(groupDone/groupItems.length*100) : 0;
+
+  const skillsHtml = Object.keys(byGroup[g]).map(s=>{
+    const itemsHtml = byGroup[g][s].map(e=>{
+      const lv = (e.lv === null || e.lv === "") ? "-" : e.lv;
+      const selfLv = (e.selfLv === null || e.selfLv === undefined || e.selfLv === "") ? null : e.selfLv;
+      const selfPart = selfLv !== null ? `／自己:Lv${selfLv}` : '';
+      return `<span class="v-instr-tag" style="background:${lvColor(e.lv)};color:#fff;">${escapeHtml(e.item)}（担当:Lv${lv}${selfPart}）</span>`;
+    }).join(' ');
+    return `<div style="margin-bottom:10px;"><b style="font-size:12px;color:var(--text-muted);">${escapeHtml(s)}</b><div style="margin-top:4px;">${itemsHtml}</div></div>`;
+  }).join('');
+
+  const jumpOptions = groupNames.map((gn,i)=>`<option value="${i}" ${i===idx?'selected':''}>${i+1}. ${escapeHtml(gn)}</option>`).join('');
+
+  card.innerHTML = `
+    <div class="v-cmp-head" style="margin-bottom:6px;">
+      <h2 style="margin:0;">🎓 教育状況</h2>
+      <button id="eduCloseBtn" class="v-pdf-btn">✕ 閉じる</button>
+    </div>
+    <div class="meta" style="margin-bottom:4px;">認定可能（Lv3以上・全工程）: <b class="num">${doneCount}</b> / ${total} 項目</div>
+    ${lastInfo ? `<div class="meta" style="margin-bottom:10px;">${lastInfo}</div>` : ''}
+    <div class="proc-theme-card" style="--pc-a:${c.a};--pc-b:${c.b};border-radius:16px;padding:14px 16px;margin-bottom:12px;">
+      <div class="gd-nav">
+        <button class="gd-nav-btn" id="eduPrevBtn" ${idx<=0?'disabled':''}>← 前の工程</button>
+        <div class="gd-page">${idx+1} / ${groupNames.length}ページ</div>
+        <button class="gd-nav-btn" id="eduNextBtn" ${idx>=groupNames.length-1?'disabled':''}>次の工程 →</button>
+      </div>
+      <select id="eduJumpSelect" class="v-search-input" style="margin-top:8px;">${jumpOptions}</select>
+      <div class="proc-theme-hd">
+        <div class="proc-icon">${icon}</div>
+        <div>
+          <div class="proc-name" style="font-size:16px;">${escapeHtml(g)}</div>
+          <div class="proc-meta"><b class="num">${groupDone}</b><span class="num">/${groupItems.length}</span>項目完了　<b class="num">${groupPct}%</b></div>
+        </div>
+      </div>
+      <div class="proc-bar-wrap"><div class="proc-bar" style="width:${groupPct}%;"></div></div>
+    </div>
+    ${skillsHtml}
+  `;
+
+  const closeBtn = document.getElementById('eduCloseBtn');
+  if(closeBtn) closeBtn.addEventListener('click', ()=>{
+    const personName = EDU_STATUS_DATA ? EDU_STATUS_DATA.personName : null;
+    EDU_STATUS_DATA = null;
+    card.innerHTML = `<h2>🎓 教育状況</h2><button id="eduShowBtn" class="v-compare-btn">🎓 教育状況を表示する</button>`;
+    const btn = document.getElementById('eduShowBtn');
+    if(btn) btn.addEventListener('click', ()=>{ loadEduStatusForDetail(personName); });
+  });
+
+  const prevBtn = document.getElementById('eduPrevBtn');
+  const nextBtn = document.getElementById('eduNextBtn');
+  const jumpSelect = document.getElementById('eduJumpSelect');
+  if(prevBtn) prevBtn.addEventListener('click', ()=>{ EDU_STATUS_IDX--; renderEduStatusPage(); });
+  if(nextBtn) nextBtn.addEventListener('click', ()=>{ EDU_STATUS_IDX++; renderEduStatusPage(); });
+  if(jumpSelect) jumpSelect.addEventListener('change', ()=>{ EDU_STATUS_IDX = Number(jumpSelect.value); renderEduStatusPage(); });
+}
+
+function escapeHtml(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function escapeAttr(str){
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// 全ての変数・関数の定義が終わってから、ショーケース用データを読み込んで表示する
+loadData();
+</script>
+</body>
+</html>
